@@ -1,0 +1,88 @@
+:root {
+  /* Colors */
+  --color-background: #F5F5F0;
+  --color-dark-1: #000000;
+  --color-dark-2: rgba(0, 0, 0, 0.6);
+  --color-grey-1: #cecccd;
+  --color-grey-2: #e5e5e5;
+  --color-grey-3: #f8f8f8;
+  --color-mouse-hover: #004643;
+  --color-primary-1: #DE896A;
+  --color-primary-2: #36c5f1;
+  --color-primary-3: #30b57f;
+  --color-primary-outline: rgb(84, 21, 84);
+  --color-secondary-1: #F24e1e;
+  --color-secondary-2: #fec700;
+  --color-secondary-3: #541554;
+  --color-secondary-4: #a9a6ff;
+  --color-secondary-outline-1: rgb(234, 178, 43);
+  --color-secondary-outline-2: rgb(222, 137, 106);
+  --color-white: #FFFFFF;
+
+  /* Shadows */
+  --shadow-m: 0.5rem 0.5rem 0rem rgb(0, 0, 0);
+  --shadow-l: 0.75rem 0.75rem 0rem rgb(0, 0, 0);
+
+  /* Stroke */
+  --stroke-width-s: 0.25rem;
+
+  /* Typography */
+  --font-primary: 'Public Sans', sans-serif;
+
+  --font-weight-Body-L: 400;
+  --font-size-Body-L: 1.125rem;
+  --line-height-Body-L: 1.9375rem;
+  
+  --font-weight-Body-M: 400;
+  --font-size-Body-M: 1rem;
+  --line-height-Body-M: 1.6rem;
+
+  --font-weight-Body-S: 400;
+  --font-size-Body-S: 0.875rem;
+  --line-height-Body-S: 1.36625rem;
+
+  --font-weight-Button-Primary: 800;
+  --font-size-Button-Primary: 1rem;
+  --line-height-Button-Primary: 1.1rem;
+
+  --font-weight-Button-Small: 800;
+  --font-size-Button-Small: 0.875rem;
+  --line-height-Button-Small: 1.9625rem;
+
+  --font-weight-H1: 900;
+  --font-size-H1: 4rem;
+  --line-height-H1: 4rem;
+
+  --font-weight-H2: 900;
+  --font-size-H2: 3rem;
+  --line-height-H2: 3.15rem;
+  
+  --font-weight-H3: 800;
+  --font-size-H3: 2.25rem;
+  --line-height-H3: 2.475rem;
+  
+  --font-weight-H4: 800;
+  --font-size-H4: 1.75rem;
+  --line-height-H4: 2.0125rem;
+
+  --font-weight-H5: 700;
+  --font-size-H5: 1.375rem;
+  --line-height-H5: 1.65rem;
+  
+  --font-weight-H6: 700;
+  --font-size-H6: 1.125rem;
+  --line-height-H6: 1.40625rem;
+  
+  --font-weight-Huge: 900;
+  --font-size-Huge: 6rem;
+  --line-height-Huge: 6rem;
+  --font-style-Huge: italic;
+
+  --font-weight-Caption: 600;
+  --font-size-Caption: 0.75rem;
+  --line-height-Caption: 0.9375rem;
+
+  --font-weight-Label: 700;
+  --font-size-Label: 0.8125rem;
+  --line-height-Label: 0.975rem;
+}

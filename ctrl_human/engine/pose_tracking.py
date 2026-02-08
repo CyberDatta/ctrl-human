@@ -18,5 +18,6 @@ while True:
     # Print payload as JSON
     print(json.dumps(payload))
 
+
     # Sleep to maintain 30 FPS
     time.sleep(1 / 30) 
