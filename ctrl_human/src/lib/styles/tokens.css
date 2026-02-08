@@ -18,6 +18,7 @@
   --color-secondary-outline-1: rgb(234, 178, 43);
   --color-secondary-outline-2: rgb(222, 137, 106);
   --color-white: #FFFFFF;
+  --color-window: #FF00F5;
 
   /* Shadows */
   --shadow-m: 0.5rem 0.5rem 0rem rgb(0, 0, 0);
