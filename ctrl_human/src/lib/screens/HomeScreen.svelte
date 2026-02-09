@@ -2,6 +2,36 @@
   import '$lib/styles/tokens.css';
   import sittingImg from '$lib/assets/images/sitting_in_front_of_pc.png';
   import posingImg from '$lib/assets/images/posing_in_front_of_pc.png';
+  import chunkyArrow from '$lib/assets/icons/chunky_arrow.svg';
+
+  let schemeOpen = false;
+  let webcamOpen = false;
+
+  const schemes = ['Minecraft', 'Fortnite', 'Valorant', 'CS2'];
+  const webcams = ['Default', 'Custom 1', 'Custom 2'];
+
+  let selectedScheme = 'Controller Scheme';
+  let selectedWebcam = 'Webcam';
+
+  function toggleScheme() {
+    schemeOpen = !schemeOpen;
+    webcamOpen = false;
+  }
+
+  function toggleWebcam() {
+    webcamOpen = !webcamOpen;
+    schemeOpen = false;
+  }
+
+  function pickScheme(scheme: string) {
+    selectedScheme = scheme;
+    schemeOpen = false;
+  }
+
+  function pickWebcam(webcam: string) {
+    selectedWebcam = webcam;
+    webcamOpen = false;
+  }
 </script>
 
 <main class="home">
@@ -15,6 +45,34 @@
       <button class="cta">Get Creative</button>
     </div>
     <div class="box box-right">
+      <div class="dropdowns">
+        <div class="dropdown">
+          <button class="dropdown-toggle" class:active={schemeOpen} on:click={toggleScheme}>
+            <span>{selectedScheme}</span>
+            <img src={chunkyArrow} alt="" class="dropdown-arrow" class:open={schemeOpen} />
+          </button>
+          {#if schemeOpen}
+            <ul class="dropdown-menu">
+              {#each schemes as scheme}
+                <li><button class="dropdown-item" on:click={() => pickScheme(scheme)}>{scheme}</button></li>
+              {/each}
+            </ul>
+          {/if}
+        </div>
+        <div class="dropdown">
+          <button class="dropdown-toggle" class:active={webcamOpen} on:click={toggleWebcam}>
+            <span>{selectedWebcam}</span>
+            <img src={chunkyArrow} alt="" class="dropdown-arrow" class:open={webcamOpen} />
+          </button>
+          {#if webcamOpen}
+            <ul class="dropdown-menu">
+              {#each webcams as webcam}
+                <li><button class="dropdown-item" on:click={() => pickWebcam(webcam)}>{webcam}</button></li>
+              {/each}
+            </ul>
+          {/if}
+        </div>
+      </div>
       <img src={posingImg} alt="Posing in front of PC" class="hero-img" />
       <h1 class="box-heading box-heading-2">Controller</h1>
       <p class="box-text box-text-2">Turn your body into the controller. All you need is a webcam.</p>
@@ -81,6 +139,7 @@
     background-color: var(--color-secondary-3);
     display: flex;
     flex-direction: column;
+    position: relative;
   }
 
   .hero-img {
@@ -141,5 +200,102 @@
 
   .cta-secondary {
     background-color: var(--color-secondary-1);
+  }
+
+  /* Dropdowns — float above the box content */
+  .dropdowns {
+    position: absolute;
+    top: 3.875rem;
+    left: 4rem;
+    right: 4rem;
+    display: flex;
+    gap: 1rem;
+    z-index: 10;
+  }
+
+  .dropdown {
+    position: relative;
+  }
+
+  .dropdown-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.125rem 1rem;
+    background-color: var(--color-primary-3);
+    border: var(--stroke-width-s) solid var(--color-dark-1);
+    border-radius: 0rem;
+    cursor: pointer;
+    font-family: var(--font-primary);
+    font-weight: var(--font-weight-H3);
+    font-size: var(--font-size-H3);
+    line-height: var(--line-height-H3);
+    color: var(--color-dark-1);
+    box-shadow: var(--shadow-m);
+  }
+
+  .dropdown-toggle:hover,
+  .dropdown-toggle.active {
+    background-color: var(--color-mouse-hover);
+    color: var(--color-white);
+  }
+
+  .dropdown-toggle:hover .dropdown-arrow,
+  .dropdown-toggle.active .dropdown-arrow {
+    filter: brightness(0) invert(1);
+  }
+
+  .dropdown-arrow {
+    width: 2rem;
+    height: 2rem;
+    transition: transform 0.2s ease;
+  }
+
+  .dropdown-arrow.open {
+    transform: rotate(180deg);
+  }
+
+  .dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    background-color: var(--color-primary-3);
+    border: var(--stroke-width-s) solid var(--color-dark-1);
+    border-top: none;
+    box-shadow: var(--shadow-m);
+    z-index: 20;
+  }
+
+  .dropdown-menu li {
+    border-bottom: var(--stroke-width-s) solid var(--color-dark-1);
+  }
+
+  .dropdown-menu li:last-child {
+    border-bottom: none;
+  }
+
+  .dropdown-item {
+    display: block;
+    width: 100%;
+    padding: 1.125rem 1rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-primary);
+    font-weight: var(--font-weight-H3);
+    font-size: var(--font-size-H3);
+    line-height: var(--line-height-H3);
+    color: var(--color-dark-1);
+    text-align: left;
+    box-sizing: border-box;
+  }
+
+  .dropdown-item:hover {
+    background-color: var(--color-mouse-hover);
+    color: var(--color-white);
   }
 </style>
