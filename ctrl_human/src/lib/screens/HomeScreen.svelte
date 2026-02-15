@@ -1,26 +1,52 @@
 <script lang="ts">
+  import { tick } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { invoke } from '@tauri-apps/api/core';
   import '$lib/styles/tokens.css';
   import sittingImg from '$lib/assets/images/sitting_in_front_of_pc.png';
   import posingImg from '$lib/assets/images/posing_in_front_of_pc.png';
   import chunkyArrow from '$lib/assets/icons/chunky_arrow.svg';
+  import errorIcon from '$lib/assets/icons/black_cross_red_background.svg';
+
+  interface Webcam {
+    index: number;
+    name: string;
+  }
 
   let schemeOpen = false;
   let webcamOpen = false;
 
   const schemes = ['Minecraft', 'Fortnite', 'Valorant', 'CS2'];
-  const webcams = ['Default', 'Custom 1', 'Custom 2'];
+  let webcams: Webcam[] = [];
+  let webcamsLoading = false;
 
-  let selectedScheme = 'Controller Scheme';
+  let selectedScheme = 'Controller';
   let selectedWebcam = 'Webcam';
+  let showError = false;
+
+  async function fetchWebcams() {
+    webcamsLoading = true;
+    try {
+      webcams = await invoke<Webcam[]>('list_webcams');
+    } catch (e) {
+      console.error('Failed to list webcams:', e);
+    } finally {
+      webcamsLoading = false;
+    }
+  }
 
   function toggleScheme() {
     schemeOpen = !schemeOpen;
     webcamOpen = false;
   }
 
-  function toggleWebcam() {
+  async function toggleWebcam() {
     webcamOpen = !webcamOpen;
     schemeOpen = false;
+    if (webcamOpen) {
+      await tick();
+      fetchWebcams();
+    }
   }
 
   function pickScheme(scheme: string) {
@@ -28,9 +54,29 @@
     schemeOpen = false;
   }
 
-  function pickWebcam(webcam: string) {
-    selectedWebcam = webcam;
+  function truncate(text: string, max = 15): string {
+    return text.length > max ? text.slice(0, max) + '…' : text;
+  }
+
+  function startPlaying() {
+    if (selectedWebcam === 'Webcam') {
+      showError = true;
+      return;
+    }
+  }
+
+  function dismissError() {
+    showError = false;
+  }
+
+  async function pickWebcam(webcam: Webcam) {
+    selectedWebcam = truncate(webcam.name);
     webcamOpen = false;
+    try {
+      await invoke('select_webcam', { index: webcam.index });
+    } catch (e) {
+      console.error('Failed to select webcam:', e);
+    }
   }
 </script>
 
@@ -42,7 +88,7 @@
       <img src={sittingImg} alt="Sitting in front of PC" class="hero-img" />
       <h2 class="box-heading">Controller Studio</h2>
       <p class="box-text">Create custom control schemes by mapping your body movements to keyboard inputs</p>
-      <button class="cta">Get Creative</button>
+      <button class="cta" on:click={() => goto('/controller-studio')}>Get Creative</button>
     </div>
     <div class="box box-right">
       <div class="dropdowns">
@@ -64,21 +110,36 @@
             <span>{selectedWebcam}</span>
             <img src={chunkyArrow} alt="" class="dropdown-arrow" class:open={webcamOpen} />
           </button>
-          {#if webcamOpen}
-            <ul class="dropdown-menu">
+          <ul class="dropdown-menu" style:display={webcamOpen ? '' : 'none'}>
+            {#if webcamsLoading}
+              <li><span class="dropdown-item">Loading...</span></li>
+            {:else if webcams.length === 0}
+              <li><span class="dropdown-item">No webcams found</span></li>
+            {:else}
               {#each webcams as webcam}
-                <li><button class="dropdown-item" on:click={() => pickWebcam(webcam)}>{webcam}</button></li>
+                <li><button class="dropdown-item" on:click={() => pickWebcam(webcam)}>{truncate(webcam.name)}</button></li>
               {/each}
-            </ul>
-          {/if}
+            {/if}
+          </ul>
         </div>
       </div>
       <img src={posingImg} alt="Posing in front of PC" class="hero-img" />
       <h1 class="box-heading box-heading-2">Controller</h1>
       <p class="box-text box-text-2">Turn your body into the controller. All you need is a webcam.</p>
-      <button class="cta cta-secondary">Start Playing</button>
+      <button class="cta cta-secondary" on:click={startPlaying}>Start Playing</button>
     </div>
   </div>
+
+  {#if showError}
+    <div class="overlay" on:click={dismissError}>
+      <div class="error-modal" on:click|stopPropagation>
+        <img src={errorIcon} alt="Error" class="error-icon" />
+        <h2 class="error-title">Error!</h2>
+        <p class="error-text">Please choose a webcam to enable body tracking.</p>
+        <button class="error-btn" on:click={dismissError}>Got It!</button>
+      </div>
+    </div>
+  {/if}
 </main>
 
 <style>
@@ -295,6 +356,86 @@
   }
 
   .dropdown-item:hover {
+    background-color: var(--color-mouse-hover);
+    color: var(--color-white);
+  }
+
+  .overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--color-dark-2);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .error-modal {
+    width: 27.9375rem;
+    height: 26.25rem;
+    background-color: var(--color-secondary-4);
+    border: var(--stroke-width-s) solid var(--color-dark-1);
+    box-shadow: var(--shadow-l);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 2.5625rem;
+    padding-bottom: 3.1875rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
+    box-sizing: border-box;
+  }
+
+  .error-icon {
+    width: 5rem;
+    height: 5rem;
+    padding-bottom: 2rem;
+  }
+
+  .error-title {
+    font-family: var(--font-primary);
+    font-weight: var(--font-weight-H2);
+    font-size: var(--font-size-H2);
+    line-height: var(--line-height-H2);
+    color: var(--color-dark-1);
+    margin: 0 0 0 0;
+  }
+
+  .error-text {
+    font-family: var(--font-primary);
+    font-weight: var(--font-weight-H4);
+    font-size: var(--font-size-H4);
+    line-height: var(--line-height-H4);
+    color: var(--color-dark-1);
+    margin: 1rem 0 2rem 0;
+    text-align: left;
+  }
+
+  .error-btn {
+    /* margin-top: 2rem; */
+    background-color: var(--color-secondary-2);
+    border: var(--stroke-width-s) solid var(--color-dark-1);
+    border-radius: 0rem;
+
+    padding-top: 0.875rem;
+    padding-bottom: 0.875rem;
+
+    padding-left: 8.125rem;
+    padding-right: 8.125rem;
+
+    cursor: pointer;
+    font-family: var(--font-primary);
+    font-weight: var(--font-weight-H3);
+    font-size: var(--font-size-H3);
+    line-height: var(--line-height-H3);
+    color: var(--color-dark-1);
+    box-shadow: var(--shadow-m);
+  }
+
+  .error-btn:hover {
     background-color: var(--color-mouse-hover);
     color: var(--color-white);
   }

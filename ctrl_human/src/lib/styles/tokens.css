@@ -19,13 +19,16 @@
   --color-secondary-outline-2: rgb(222, 137, 106);
   --color-white: #FFFFFF;
   --color-window: #FF00F5;
+  --color-tertiary-1: #7df9ff;
 
   /* Shadows */
   --shadow-m: 0.5rem 0.5rem 0rem rgb(0, 0, 0);
   --shadow-l: 0.75rem 0.75rem 0rem rgb(0, 0, 0);
 
   /* Stroke */
+  --stroke-width-m: 0.5rem;
   --stroke-width-s: 0.25rem;
+  --stroke-width-xs: 0.125rem;
 
   /* Typography */
   --font-primary: 'Public Sans', sans-serif;
