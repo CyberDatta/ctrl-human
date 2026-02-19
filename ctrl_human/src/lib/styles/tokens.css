@@ -30,6 +30,10 @@
   --stroke-width-s: 0.25rem;
   --stroke-width-xs: 0.125rem;
 
+  /* Border Radius */
+  --border-radius-n: 0rem;
+  --border-radius-s: 0.25rem;
+
   /* Typography */
   --font-primary: 'Public Sans', sans-serif;
 
