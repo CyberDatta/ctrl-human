@@ -41,12 +41,14 @@
   <div class="toolbar">
     <div class="search-bar">
       <img src={magnifyingGlass} alt="Search" class="search-icon" />
-      <input
-        type="text"
-        class="search-input"
-        placeholder="Search with name..."
-        bind:value={searchQuery}
-      />
+      <div class="search-inner">
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Search with name..."
+          bind:value={searchQuery}
+        />
+      </div>
     </div>
 
     <div class="action-buttons">
@@ -99,18 +101,18 @@
     background-color: var(--color-primary-1);
     box-sizing: border-box;
     overflow-y: auto;
-    padding: 0 4rem 4rem 4rem;
+    padding: 4rem 4rem 4rem 4rem;
   }
 
   /* ── Nav ── */
   .top-bar {
-    padding: 4rem 0 2rem 0;
+    padding: 0rem 0 4rem 0;
   }
 
   .back-btn {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 2.25rem;
     background: none;
     border: none;
     cursor: pointer;
@@ -146,31 +148,40 @@
     line-height: var(--line-height-Huge);
     font-style: var(--font-style-Huge);
     color: var(--color-dark-1);
-    margin: 0 0 2rem 0;
+    margin: 0rem 0rem 2rem 0rem;
   }
 
   /* ── Toolbar ── */
   .toolbar {
     display: flex;
     align-items: center;
-    gap: 2rem;
-    margin-bottom: 2rem;
+    gap: 0rem;
+    margin-bottom: 2.5rem;
   }
 
   .search-bar {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    background-color: var(--color-background);
-    border: var(--stroke-width-s) solid var(--color-secondary-4);
-    padding: 0.75rem 1rem;
+    background-color: var(--color-secondary-4);
+    padding: 1rem 2rem;
     flex: 0 1 32rem;
+    box-shadow: var(--shadow-m);
+    border: var(--stroke-width-s) solid var(--color-dark-1);
   }
 
   .search-icon {
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 3rem;
+    height: 3rem;
     flex-shrink: 0;
+  }
+
+  .search-inner {
+    border: var(--stroke-width-xs) solid var(--color-dark-1);
+    background-color: var(--color-background);
+    border-radius: var(--border-radius-s);
+    flex: 1;
+    padding: 0.4rem 0.75rem;
   }
 
   .search-input {
@@ -178,9 +189,9 @@
     background: none;
     outline: none;
     font-family: var(--font-primary);
-    font-weight: var(--font-weight-Body-M);
-    font-size: var(--font-size-Body-M);
-    line-height: var(--line-height-Body-M);
+    font-weight: var(--font-weight-H5);
+    font-size: var(--font-size-H5);
+    line-height: var(--line-height-H5);
     color: var(--color-dark-1);
     width: 100%;
   }
@@ -240,9 +251,10 @@
   }
 
   .pose-card {
-    width: 16rem;
+    width: 20rem;
+    height: 20rem;
     border: var(--stroke-width-s) solid var(--color-dark-1);
-    background-color: var(--color-primary-3);
+    background-color: var(--color-background);
     box-shadow: var(--shadow-m);
     display: flex;
     flex-direction: column;
@@ -251,8 +263,8 @@
   .pose-card-icons {
     display: flex;
     justify-content: flex-end;
-    gap: 0.25rem;
-    padding: 0.5rem 0.5rem 0 0.5rem;
+    gap: 1rem;
+    padding: 1rem 1rem 0rem 0rem;
   }
 
   .icon-btn {
@@ -275,9 +287,8 @@
   }
 
   .pose-card-image {
-    background-color: var(--color-background);
-    margin: 0.5rem;
-    height: 12rem;
+    flex: 1;
+    min-height: 11rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -290,7 +301,9 @@
   }
 
   .pose-card-label {
+    background-color: var(--color-primary-3);
     padding: 0.75rem 1rem;
+    border-top: var(--stroke-width-s) solid var(--color-dark-1);
   }
 
   .pose-name {
@@ -298,6 +311,6 @@
     font-weight: var(--font-weight-H5);
     font-size: var(--font-size-H5);
     line-height: var(--line-height-H5);
-    color: var(--color-white);
+    color: var(--color-dark-1);
   }
 </style>
