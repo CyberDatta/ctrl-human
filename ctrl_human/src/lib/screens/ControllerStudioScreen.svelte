@@ -9,6 +9,10 @@
     goto('/');
   }
 
+  function goToPoseLibrary() {
+    goto('/controller-studio/pose-library');
+  }
+
   let schemes = [
     { name: 'Hollow Knight', enabled: true },
     { name: 'Elden Ring', enabled: false },
@@ -44,7 +48,7 @@
       <div class="card pose-card">
         <h2 class="card-heading">Pose Maker</h2>
         <p class="card-text">Pose in front of the camera, then tweak the captured pose landmarks to build your own custom pose template.</p>
-        <button class="cta cta-pose">Selfie Time</button>
+        <button class="cta cta-pose" on:click={goToPoseLibrary}>Selfie Time</button>
       </div>
 
       <div class="webcam-frame">
