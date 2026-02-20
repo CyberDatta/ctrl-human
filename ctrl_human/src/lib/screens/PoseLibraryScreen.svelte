@@ -58,7 +58,7 @@
       </button>
       <button class="action-btn action-btn-upload">
         <img src={imageIcon} alt="Image" class="action-icon" />
-        <span>Upload Image</span>
+        <span>Upload Images</span>
       </button>
       <button class="action-btn action-btn-import">
         <img src={uploadIcon} alt="Import" class="action-icon" />
