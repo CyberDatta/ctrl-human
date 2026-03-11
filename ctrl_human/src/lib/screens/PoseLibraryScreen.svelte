@@ -13,6 +13,10 @@
     goto('/controller-studio');
   }
 
+  function openPoseEditor() {
+    goto('/controller-studio/pose-library/edit');
+  }
+
   let searchQuery = '';
 
   // Placeholder pose data
@@ -52,13 +56,9 @@
     </div>
 
     <div class="action-buttons">
-      <button class="action-btn action-btn-webcam">
+      <button class="action-btn action-btn-webcam" on:click={openPoseEditor}>
         <img src={cameraIcon} alt="Camera" class="action-icon" />
-        <span>Create With Webcam</span>
-      </button>
-      <button class="action-btn action-btn-upload">
-        <img src={imageIcon} alt="Image" class="action-icon" />
-        <span>Upload Images</span>
+        <span>Add New Pose</span>
       </button>
       <button class="action-btn action-btn-import">
         <img src={uploadIcon} alt="Import" class="action-icon" />
@@ -69,7 +69,9 @@
 
   <div class="poses-grid">
     {#each filteredPoses as pose}
-      <div class="pose-card">
+      <!-- svelte-ignore a11y-click-events-have-key-events -->
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
+      <div class="pose-card" on:click={openPoseEditor} style="cursor: pointer;">
         <div class="pose-card-icons">
           <button class="icon-btn">
             <img src={pencilIcon} alt="Edit" class="card-icon" />
