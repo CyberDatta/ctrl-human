@@ -10,6 +10,7 @@
   --color-primary-1: #DE896A;
   --color-primary-2: #36c5f1;
   --color-primary-3: #30b57f;
+  --color-primary-4: #74ff74;
   --color-primary-outline: rgb(84, 21, 84);
   --color-secondary-1: #F24e1e;
   --color-secondary-2: #fec700;
@@ -17,11 +18,15 @@
   --color-secondary-4: #a9a6ff;
   --color-secondary-outline-1: rgb(234, 178, 43);
   --color-secondary-outline-2: rgb(222, 137, 106);
+  --color-tertiary-1: #7df9ff;
+  --color-tertiary-2: #ffb2ef;
+  --color-tertiary-3: #FCDFFF;
   --color-white: #FFFFFF;
   --color-window: #FF00F5;
-  --color-tertiary-1: #7df9ff;
+
 
   /* Shadows */
+  --shadow-s: 0.25rem 0.25rem 0rem rgb(0, 0, 0);
   --shadow-m: 0.5rem 0.5rem 0rem rgb(0, 0, 0);
   --shadow-l: 0.75rem 0.75rem 0rem rgb(0, 0, 0);
 
