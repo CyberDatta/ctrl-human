@@ -13,6 +13,10 @@
     goto('/controller-studio/pose-library');
   }
 
+  function goToControllerLibrary() {
+    goto('/controller-studio/controller-library');
+  }
+
   let schemes = [
     { name: 'Hollow Knight', enabled: true },
     { name: 'Elden Ring', enabled: false },
@@ -58,7 +62,7 @@
       <div class="card builder-card">
         <h2 class="card-heading">Controller Builder</h2>
         <p class="card-text">Use your pose templates to turn your body movements into a fully functional game controller.</p>
-        <button class="cta cta-builder">Yeehaw</button>
+        <button class="cta cta-builder" on:click={goToControllerLibrary}>Yeehaw</button>
       </div>
 
       <h1 class="studio-title">Controller<br>Studio</h1>
