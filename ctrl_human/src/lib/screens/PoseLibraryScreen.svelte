@@ -1,5 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { invoke } from '@tauri-apps/api/core';
+  import { onMount } from 'svelte';
   import '$lib/styles/tokens.css';
   import magnifyingGlass from '$lib/assets/icons/magnifying_glass.svg';
   import cameraIcon from '$lib/assets/icons/camera.svg';
@@ -13,20 +15,31 @@
     goto('/controller-studio');
   }
 
-  function openPoseEditor() {
-    goto('/controller-studio/pose-library/edit');
+  async function addNewPose() {
+    const poseId = await invoke<string>('create_pose');
+    await loadPoses();
+    goto(`/controller-studio/pose-library/edit?id=${poseId}`);
   }
 
   let searchQuery = '';
 
-  // Placeholder pose data
-  let poses = [
-    { name: 'Wave with both Hands', image: '' },
-    { name: 'Wave with one Hand', image: '' },
-  ];
+  type PoseSummary = { pose_id: string; title: string };
+  let poses: PoseSummary[] = [];
+
+  async function loadPoses() {
+    poses = await invoke<PoseSummary[]>('load_poses');
+  }
+
+  async function deletePose(poseId: string, event: MouseEvent) {
+    event.stopPropagation();
+    await invoke('delete_pose', { poseId });
+    poses = poses.filter(p => p.pose_id !== poseId);
+  }
+
+  onMount(loadPoses);
 
   $: filteredPoses = poses.filter(pose =>
-    pose.name.toLowerCase().includes(searchQuery.toLowerCase())
+    pose.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 </script>
 
@@ -56,7 +69,7 @@
     </div>
 
     <div class="action-buttons">
-      <button class="action-btn action-btn-webcam" on:click={openPoseEditor}>
+      <button class="action-btn action-btn-webcam" on:click={addNewPose}>
         <img src={cameraIcon} alt="Camera" class="action-icon" />
         <span>Add New Pose</span>
       </button>
@@ -71,25 +84,21 @@
     {#each filteredPoses as pose}
       <!-- svelte-ignore a11y-click-events-have-key-events -->
       <!-- svelte-ignore a11y-no-static-element-interactions -->
-      <div class="pose-card" on:click={openPoseEditor} style="cursor: pointer;">
+      <div class="pose-card" on:click={() => goto(`/controller-studio/pose-library/edit?id=${pose.pose_id}`)} style="cursor: pointer;">
         <div class="pose-card-icons">
-          <button class="icon-btn">
+          <!-- <button class="icon-btn">
             <img src={pencilIcon} alt="Edit" class="card-icon" />
-          </button>
+          </button> -->
           <button class="icon-btn">
             <img src={downloadIcon} alt="Download" class="card-icon" />
           </button>
-          <button class="icon-btn">
+          <button class="icon-btn" on:click={(e) => deletePose(pose.pose_id, e)}>
             <img src={trashIcon} alt="Delete" class="card-icon" />
           </button>
         </div>
-        <div class="pose-card-image">
-          {#if pose.image}
-            <img src={pose.image} alt={pose.name} />
-          {/if}
-        </div>
+        <div class="pose-card-image"></div>
         <div class="pose-card-label">
-          <span class="pose-name">{pose.name}</span>
+          <span class="pose-name">{pose.title}</span>
         </div>
       </div>
     {/each}

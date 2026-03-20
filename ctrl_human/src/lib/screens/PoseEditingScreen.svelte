@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
+  import { invoke } from '@tauri-apps/api/core';
   import '$lib/styles/tokens.css';
   import pencilIcon from '$lib/assets/icons/pencil.svg';
   import cameraIcon from '$lib/assets/icons/camera.svg';
@@ -17,12 +19,45 @@
     goto('/controller-studio/pose-library');
   }
 
+  // ── Load pose from save file ──
+  type DetectionMethod = 'cosine' | 'relative';
+  let poseId: string | null = null;
+
+  async function loadPose() {
+    poseId = $page.url.searchParams.get('id');
+    if (!poseId) return;
+    const pose = await invoke<{
+      title: string;
+      description: string;
+      detection: { method: string; confidence: number };
+      active_landmarks: boolean[];
+    }>('load_pose', { poseId });
+
+    poseName = pose.title;
+    description = pose.description;
+    detectionMethod = (pose.detection.method === 'cosine' ? 'cosine' : 'relative') as DetectionMethod;
+    minSimilarity = Math.round(pose.detection.confidence * 100);
+    joints = joints.map((j, i) => ({ ...j, active: pose.active_landmarks[i] ?? true }));
+  }
+
+  function savePose() {
+    if (!poseId) return;
+    invoke('save_pose', {
+      poseId,
+      title: poseName,
+      description,
+      detectionMethod,
+      confidence: minSimilarity / 100,
+      activeLandmarks: joints.map(j => j.active),
+    });
+  }
+
   // ── Title editing ──
   let poseName = 'Untitled Pose 7';
   let editingTitle = false;
   let titleDraft = '';
   function startEditTitle() { titleDraft = poseName; editingTitle = true; }
-  function commitTitle() { if (titleDraft.trim()) poseName = titleDraft.trim(); editingTitle = false; }
+  function commitTitle() { if (titleDraft.trim()) poseName = titleDraft.trim(); editingTitle = false; savePose(); }
   function onTitleKey(e: KeyboardEvent) {
     if (e.key === 'Enter') commitTitle();
     if (e.key === 'Escape') editingTitle = false;
@@ -33,12 +68,18 @@
   let editingDesc = false;
   let descDraft = '';
   function startEditDesc() { descDraft = description; editingDesc = true; }
-  function commitDesc() { if (descDraft.trim()) description = descDraft.trim(); editingDesc = false; }
+  function commitDesc() { if (descDraft.trim()) description = descDraft.trim(); editingDesc = false; savePose(); }
 
   // ── Detection method ──
-  type DetectionMethod = 'cosine' | 'relative';
-  let detectionMethod: DetectionMethod = 'cosine';
-  let minSimilarity = 60;
+  let detectionMethod: DetectionMethod = 'relative';
+  let minSimilarity = 50;
+
+  // ── Slider debounce ──
+  let sliderTimer: ReturnType<typeof setTimeout>;
+  function onSliderChange() {
+    clearTimeout(sliderTimer);
+    sliderTimer = setTimeout(savePose, 400);
+  }
 
   // ── Skeleton zoom/pan ──
   let viewportEl: HTMLDivElement;
@@ -54,6 +95,7 @@
 
   onMount(() => {
     viewportEl.addEventListener('wheel', onViewWheel, { passive: false });
+    loadPose();
     return () => viewportEl.removeEventListener('wheel', onViewWheel);
   });
 
@@ -134,6 +176,7 @@
   function toggleJoint(id: string, e: MouseEvent) {
     e.stopPropagation();
     joints = joints.map(j => j.id === id ? { ...j, active: !j.active } : j);
+    savePose();
   }
 
   // ── Reference images ──
@@ -290,12 +333,12 @@
               <button
                 class="method-btn"
                 class:method-active={detectionMethod === 'cosine'}
-                on:click={() => detectionMethod = 'cosine'}
+                on:click={() => { detectionMethod = 'cosine'; savePose(); }}
               >Cosine Similarity</button>
               <button
                 class="method-btn"
                 class:method-active={detectionMethod === 'relative'}
-                on:click={() => detectionMethod = 'relative'}
+                on:click={() => { detectionMethod = 'relative'; savePose(); }}
               >Relative Positioning</button>
             </div>
 
@@ -313,6 +356,7 @@
                     min="0"
                     max="100"
                     bind:value={minSimilarity}
+                    on:input={onSliderChange}
                   />
                 </div>
               </div>
@@ -332,7 +376,7 @@
             </button>
 
             <!-- Delete Pose -->
-            <button class="ctrl-btn delete-btn">
+            <button class="ctrl-btn delete-btn" on:click={async () => { if (poseId) { await invoke('delete_pose', { poseId }); goto('/controller-studio/pose-library'); } }}>
               <span>Delete Pose</span>
             </button>
           </div>
@@ -508,7 +552,8 @@
 
   .pencil-btn-desc {
     position: static;
-    margin-top: 0;
+    margin-top: 0.25rem;
+    align-self: flex-start;
   }
 
   .pencil-icon {
