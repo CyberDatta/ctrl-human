@@ -98,8 +98,11 @@
     try {
       const imageId = await invoke<string>('save_pose_image', { poseId, imageData: base64 });
       captures = [...captures, { imageId, dataUrl }];
-    } catch (err) {
-      console.error('Failed to save image:', err);
+    } catch (err: unknown) {
+      const msg = String(err);
+      if (!msg.includes('No pose detected')) {
+        console.error('Failed to save image:', err);
+      }
     }
   }
 
