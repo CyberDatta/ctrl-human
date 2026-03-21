@@ -95,7 +95,7 @@
 
   onMount(() => {
     viewportEl.addEventListener('wheel', onViewWheel, { passive: false });
-    loadPose();
+    loadPose().then(() => loadPoseImages());
     return () => viewportEl.removeEventListener('wheel', onViewWheel);
   });
 
@@ -180,22 +180,28 @@
   }
 
   // ── Reference images ──
-  let refImages: { id: number; selected: boolean }[] = [
-    { id: 1, selected: false },
-    { id: 2, selected: true  },
-    { id: 3, selected: true  },
-    { id: 4, selected: true  },
-    { id: 5, selected: true  },
-    { id: 6, selected: true  },
-    { id: 7, selected: false  },
-    { id: 8, selected: true  },
-    { id: 9, selected: true  },
-  ];
-  function toggleRef(id: number) {
-    refImages = refImages.map(img => img.id === id ? { ...img, selected: !img.selected } : img);
+  type RefImage = { image_id: string; active: boolean; data_b64: string };
+  let refImages: RefImage[] = [];
+
+  async function loadPoseImages() {
+    if (!poseId) return;
+    try {
+      refImages = await invoke<RefImage[]>('load_pose_images', { poseId });
+    } catch { /* no images yet */ }
   }
-  function removeRef(id: number) {
-    refImages = refImages.filter(img => img.id !== id);
+
+  async function toggleRef(image_id: string) {
+    const img = refImages.find(i => i.image_id === image_id);
+    if (!img || !poseId) return;
+    const newActive = !img.active;
+    refImages = refImages.map(i => i.image_id === image_id ? { ...i, active: newActive } : i);
+    invoke('set_image_active', { poseId, imageId: image_id, active: newActive });
+  }
+
+  async function removeRef(image_id: string) {
+    if (!poseId) return;
+    await invoke('delete_pose_image', { poseId, imageId: image_id });
+    refImages = refImages.filter(i => i.image_id !== image_id);
   }
 </script>
 
@@ -317,7 +323,7 @@
             <img src={imageIcon} alt="" class="btn-icon" />
             <span>Upload Image</span>
           </button>
-          <button class="ctrl-btn camera-btn" on:click={() => goto('/controller-studio/pose-library/edit/capture')}>
+          <button class="ctrl-btn camera-btn" on:click={() => goto(`/controller-studio/pose-library/edit/capture?id=${poseId}&name=${encodeURIComponent(poseName)}`)}>
             <img src={cameraIcon} alt="" class="btn-icon" />
             <span>Pose for the Camera</span>
           </button>
@@ -394,17 +400,15 @@
     </div>
 
     <div class="sidebar-scroll">
-      {#each refImages as img (img.id)}
+      {#each refImages as img (img.image_id)}
         <div class="ref-card">
-          <div class="ref-card-top">
-            <button class="ref-remove-btn" on:click={() => removeRef(img.id)} aria-label="Remove image">
-              <img src={crossRedIcon} alt="Remove" class="ref-icon" />
-            </button>
-            <button class="ref-check-btn" on:click={() => toggleRef(img.id)} aria-label="Toggle selection">
-              <img src={img.selected ? checkedIcon : uncheckedIcon} alt={img.selected ? 'Selected' : 'Unselected'} class="ref-icon" />
-            </button>
-          </div>
-          <div class="ref-card-body"></div>
+          <img src="data:image/png;base64,{img.data_b64}" alt="Pose reference" class="ref-image" />
+          <button class="ref-remove-btn" on:click={() => removeRef(img.image_id)} aria-label="Remove image">
+            <img src={crossRedIcon} alt="Remove" class="ref-icon" />
+          </button>
+          <button class="ref-check-btn" on:click={() => toggleRef(img.image_id)} aria-label="Toggle selection">
+            <img src={img.active ? checkedIcon : uncheckedIcon} alt={img.active ? 'Selected' : 'Unselected'} class="ref-icon" />
+          </button>
         </div>
       {/each}
     </div>
@@ -807,10 +811,12 @@
   /* ── Right sidebar ── */
   .sidebar {
     width: 32.5rem;
+    min-width: 0;
     flex-shrink: 0;
     height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
     border-left: var(--stroke-width-s) solid var(--color-dark-1);
   }
 
@@ -851,21 +857,22 @@
     background-color: var(--color-background);
     border: var(--stroke-width-s) solid var(--color-dark-1);
     box-shadow: var(--shadow-s);
-    display: flex;
-    flex-direction: column;
-    min-height: 17rem;
+    position: relative;
+    overflow: hidden;
   }
 
-  .ref-card-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding: 0.75rem 0.75rem 0 0.75rem;
-    flex-shrink: 0;
+  .ref-image {
+    width: 100%;
+    display: block;
+    min-width: 0;
+    min-height: 0;
+    object-fit: cover;
   }
 
   .ref-remove-btn,
   .ref-check-btn {
+    position: absolute;
+    top: 0.5rem;
     background: none;
     border: none;
     cursor: pointer;
@@ -875,6 +882,9 @@
     justify-content: center;
   }
 
+  .ref-remove-btn { left: 0.5rem; }
+  .ref-check-btn  { right: 0.5rem; }
+
   .ref-remove-btn:hover,
   .ref-check-btn:hover {
     opacity: 0.75;
@@ -883,9 +893,5 @@
   .ref-icon {
     width: 2rem;
     height: 2rem;
-  }
-
-  .ref-card-body {
-    flex: 1;
   }
 </style>
