@@ -179,6 +179,36 @@
     savePose();
   }
 
+  // ── Upload image ──
+  let fileInputEl: HTMLInputElement;
+  let uploading = false;
+
+  async function handleFileUpload(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file || !poseId) return;
+    uploading = true;
+
+    const dataUrl = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsDataURL(file);
+    });
+
+    const base64 = dataUrl.replace('data:image/png;base64,', '');
+
+    try {
+      const imageId = await invoke<string>('save_pose_image', { poseId, imageData: base64 });
+      refImages = [...refImages, { image_id: imageId, active: false, data_b64: base64 }];
+    } catch (err: unknown) {
+      if (!String(err).includes('No pose detected')) {
+        console.error('Failed to upload image:', err);
+      }
+    } finally {
+      uploading = false;
+      fileInputEl.value = '';
+    }
+  }
+
   // ── Reference images ──
   type RefImage = { image_id: string; active: boolean; data_b64: string };
   let refImages: RefImage[] = [];
@@ -318,10 +348,17 @@
       <div class="controls-col">
 
         <!-- Upload / Camera buttons -->
+        <input
+          type="file"
+          accept=".png,image/png"
+          bind:this={fileInputEl}
+          on:change={handleFileUpload}
+          style="display:none"
+        />
         <div class="upload-row">
-          <button class="ctrl-btn upload-btn">
+          <button class="ctrl-btn upload-btn" on:click={() => fileInputEl.click()} disabled={uploading}>
             <img src={imageIcon} alt="" class="btn-icon" />
-            <span>Upload Image</span>
+            <span>{uploading ? 'Processing…' : 'Upload Image'}</span>
           </button>
           <button class="ctrl-btn camera-btn" on:click={() => goto(`/controller-studio/pose-library/edit/capture?id=${poseId}&name=${encodeURIComponent(poseName)}`)}>
             <img src={cameraIcon} alt="" class="btn-icon" />
@@ -377,9 +414,9 @@
             </button>
 
             <!-- Export Pose -->
-            <button class="ctrl-btn export-btn">
+            <!-- <button class="ctrl-btn export-btn">
               <span>Export Pose</span>
-            </button>
+            </button> -->
 
             <!-- Delete Pose -->
             <button class="ctrl-btn delete-btn" on:click={async () => { if (poseId) { await invoke('delete_pose', { poseId }); goto('/controller-studio/pose-library'); } }}>
@@ -859,6 +896,8 @@
     box-shadow: var(--shadow-s);
     position: relative;
     overflow: hidden;
+    flex-shrink: 0;
+    height: 16rem;
   }
 
   .ref-image {

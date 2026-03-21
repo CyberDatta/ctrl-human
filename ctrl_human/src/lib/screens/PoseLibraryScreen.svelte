@@ -73,10 +73,10 @@
         <img src={cameraIcon} alt="Camera" class="action-icon" />
         <span>Add New Pose</span>
       </button>
-      <button class="action-btn action-btn-import">
+      <!-- <button class="action-btn action-btn-import">
         <img src={uploadIcon} alt="Import" class="action-icon" />
         <span>Import From Pose File</span>
-      </button>
+      </button> -->
     </div>
   </div>
 
@@ -89,9 +89,9 @@
           <!-- <button class="icon-btn">
             <img src={pencilIcon} alt="Edit" class="card-icon" />
           </button> -->
-          <button class="icon-btn">
+          <!-- <button class="icon-btn">
             <img src={downloadIcon} alt="Download" class="card-icon" />
-          </button>
+          </button> -->
           <button class="icon-btn" on:click={(e) => deletePose(pose.pose_id, e)}>
             <img src={trashIcon} alt="Delete" class="card-icon" />
           </button>
