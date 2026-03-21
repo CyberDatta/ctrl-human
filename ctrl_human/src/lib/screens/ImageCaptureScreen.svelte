@@ -1,33 +1,139 @@
 <script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
+  import { invoke } from '@tauri-apps/api/core';
   import '$lib/styles/tokens.css';
   import cameraIcon from '$lib/assets/icons/camera.svg';
   import crossRedIcon from '$lib/assets/icons/cross.svg';
   import switchCardIcon from '$lib/assets/icons/switch_card.svg';
   import ecstaticIcon from '$lib/assets/icons/ecstatic.svg';
 
-  let poseName = 'Untitled Pose 7';
+  let poseName = $page.url.searchParams.get('name') ?? 'Untitled Pose';
+  let poseId = $page.url.searchParams.get('id');
 
-  // Captured images (placeholder cards)
-  let captures: { id: number }[] = [
-    { id: 1 },
-    { id: 2 },
-    { id: 3 },
-    { id: 4 },
-    { id: 5 },
-    { id: 6 },
-    { id: 7 },
-    { id: 8 },
-    { id: 9 },
-  ];
+  // ── Camera via single-frame polling ──
+  // WebKitGTK (Tauri/Linux) errors on streaming responses (MJPEG / XHR arraybuffer).
+  // Polling /frame with individual fetch() + arrayBuffer() calls works reliably.
+  let canvasEl: HTMLCanvasElement;
+  let cameraError = '';
+  let webcams: { index: number; name: string }[] = [];
+  let currentWebcamPos = 0;
+  let pollRunning = false;
+  let pollGeneration = 0;
 
-  function removeCapture(id: number) {
-    captures = captures.filter(c => c.id !== id);
+  function drawJpeg(jpeg: Uint8Array<ArrayBuffer>) {
+    const ctx = canvasEl?.getContext('2d');
+    if (!ctx) return;
+    createImageBitmap(new Blob([jpeg], { type: 'image/jpeg' }))
+      .then(bitmap => {
+        if (canvasEl.width !== bitmap.width || canvasEl.height !== bitmap.height) {
+          canvasEl.width = bitmap.width;
+          canvasEl.height = bitmap.height;
+        }
+        ctx.drawImage(bitmap, 0, 0);
+        bitmap.close();
+      })
+      .catch(() => {});
+  }
+
+  async function pollLoop(frameUrl: string, generation: number) {
+    while (pollRunning && pollGeneration === generation) {
+      try {
+        const response = await fetch(frameUrl);
+        if (response.ok) {
+          const buffer = await response.arrayBuffer();
+          drawJpeg(new Uint8Array(buffer));
+        }
+        // 503 means camera not ready yet — just retry on the next tick
+      } catch {
+        // Network errors on individual frames are ignored; stop only if superseded or stopped
+      }
+    }
+  }
+
+  async function startCamera(index: number = 0) {
+    pollRunning = false;
+    pollGeneration++;
+    try { await invoke('stop_camera_stream'); } catch { /* no existing stream */ }
+
+    cameraError = '';
+
+    try {
+      const port = await invoke<number>('start_camera_stream', { cameraIndex: index });
+      pollRunning = true;
+      pollLoop(`http://127.0.0.1:${port}/frame`, pollGeneration);
+    } catch (err) {
+      cameraError = String(err);
+    }
+  }
+
+  async function switchCamera() {
+    if (webcams.length <= 1) return;
+    currentWebcamPos = (currentWebcamPos + 1) % webcams.length;
+    await startCamera(webcams[currentWebcamPos].index);
+  }
+
+  // ── Selfie countdown + capture ──
+  let countdown: number | null = null;
+
+  function startSelfieCountdown() {
+    if (countdown !== null) return;
+    countdown = 10;
+    const interval = setInterval(async () => {
+      if (countdown! > 0) {
+        countdown!--;
+      } else {
+        clearInterval(interval);
+        await captureFrame();
+        countdown = null;
+      }
+    }, 1000);
+  }
+
+  async function captureFrame() {
+    if (!poseId || !canvasEl) return;
+    const dataUrl = canvasEl.toDataURL('image/png');
+    const base64 = dataUrl.replace('data:image/png;base64,', '');
+    try {
+      const imageId = await invoke<string>('save_pose_image', { poseId, imageData: base64 });
+      captures = [...captures, { imageId, dataUrl }];
+    } catch (err) {
+      console.error('Failed to save image:', err);
+    }
+  }
+
+  // ── Captures ──
+  let captures: { imageId: string; dataUrl: string }[] = [];
+
+  async function removeCapture(imageId: string) {
+    if (!poseId) return;
+    try {
+      await invoke('delete_pose_image', { poseId, imageId });
+    } catch (err) {
+      console.error('Failed to delete image:', err);
+    }
+    captures = captures.filter(c => c.imageId !== imageId);
   }
 
   function goBack() {
-    goto('/controller-studio/pose-library/edit');
+    goto(poseId ? `/controller-studio/pose-library/edit?id=${poseId}` : '/controller-studio/pose-library');
   }
+
+  onMount(async () => {
+    // Get camera count for switch button
+    try {
+      webcams = await invoke<{ index: number; name: string }[]>('list_webcams');
+    } catch { /* default: empty, startCamera(0) used directly */ }
+
+    const firstIndex = webcams.length > 0 ? webcams[0].index : 0;
+    startCamera(firstIndex);
+  });
+
+  onDestroy(async () => {
+    pollRunning = false;
+    try { await invoke('stop_camera_stream'); } catch { /* ignore */ }
+  });
 </script>
 
 <div class="capture-screen">
@@ -45,22 +151,34 @@
   <!-- Main area: video preview + action buttons -->
   <div class="main-area">
 
-    <!-- Webcam preview -->
-    <div class="video-preview"></div>
+    <!-- Camera preview via canvas -->
+    <div class="video-preview">
+      <canvas bind:this={canvasEl} class="video-feed" width="1280" height="720"></canvas>
+      {#if countdown !== null}
+        <div class="countdown-overlay">{countdown}</div>
+      {/if}
+      {#if cameraError}
+        <div class="camera-error">{cameraError}</div>
+      {/if}
+    </div>
 
     <!-- Action buttons -->
     <div class="action-col">
-      <button class="action-btn selfie-btn">
+      <button class="action-btn selfie-btn" on:click={startSelfieCountdown} disabled={countdown !== null}>
         <img src={cameraIcon} alt="" class="action-icon" />
         <span>Selfie Time</span>
       </button>
 
-      <button class="action-btn switch-btn">
+      <button
+        class="action-btn switch-btn"
+        on:click={switchCamera}
+        disabled={webcams.length <= 1}
+      >
         <img src={switchCardIcon} alt="" class="action-icon" />
         <span>Switch Camera</span>
       </button>
 
-      <button class="action-btn over-btn">
+      <button class="action-btn over-btn" on:click={goBack}>
         <img src={ecstaticIcon} alt="" class="action-icon" />
         <span>Selfie Time Over</span>
       </button>
@@ -69,9 +187,10 @@
 
   <!-- Horizontally scrollable captures strip -->
   <div class="captures-strip">
-    {#each captures as cap (cap.id)}
+    {#each captures as cap (cap.imageId)}
       <div class="capture-card">
-        <button class="remove-btn" on:click={() => removeCapture(cap.id)} aria-label="Remove capture">
+        <img src={cap.dataUrl} alt="Captured pose" class="capture-img" />
+        <button class="remove-btn" on:click={() => removeCapture(cap.imageId)} aria-label="Remove capture">
           <img src={crossRedIcon} alt="Remove" class="remove-icon" />
         </button>
       </div>
@@ -85,7 +204,7 @@
     display: flex;
     flex-direction: column;
     height: 100vh;
-    overflow: hidden;
+    overflow-y: auto;
     background-color: var(--color-primary-3);
     font-family: var(--font-primary);
     padding: 2.5rem 3rem 0 3rem;
@@ -137,14 +256,51 @@
     justify-content: center;
   }
 
-  /* ── Webcam preview ── */
+  /* ── Camera preview ── */
   .video-preview {
-    /* flex: 1; */
     width: 56.25rem;
-    height: 33.875rem;
     background-color: var(--color-background);
     border: var(--stroke-width-s) solid var(--color-dark-1);
     box-shadow: var(--shadow-m);
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .video-feed {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .countdown-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-primary);
+    font-size: 20rem;
+    font-weight: var(--font-weight-Huge);
+    color: var(--color-background);
+    -webkit-text-stroke: 0.4rem var(--color-dark-1);
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .camera-error {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-background);
+    font-family: var(--font-primary);
+    font-weight: var(--font-weight-H5);
+    font-size: var(--font-size-H5);
+    color: var(--color-dark-1);
+    padding: 2rem;
+    text-align: center;
   }
 
   /* ── Action buttons column ── */
@@ -171,25 +327,22 @@
     padding: 0.85rem 1.5rem;
     transition: background-color 0.1s, color 0.1s;
     width: 26.9375rem;
-    height: 6.5;
   }
 
-  .action-btn:hover {
+  .action-btn:hover:not(:disabled) {
     background-color: var(--color-mouse-hover);
     color: var(--color-white);
   }
 
-  .selfie-btn {
-    background-color: var(--color-secondary-2);
+  .action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
   }
 
-  .switch-btn {
-    background-color: var(--color-primary-2);
-  }
-
-  .over-btn {
-    background-color: var(--color-secondary-4);
-  }
+  .selfie-btn  { background-color: var(--color-secondary-2); }
+  .switch-btn  { background-color: var(--color-primary-2); }
+  .over-btn    { background-color: var(--color-secondary-4); }
 
   .action-icon {
     width: 2.25rem;
@@ -210,10 +363,7 @@
     scrollbar-color: var(--color-dark-1) transparent;
   }
 
-  .captures-strip::-webkit-scrollbar {
-    height: 0.4rem;
-  }
-
+  .captures-strip::-webkit-scrollbar { height: 0.4rem; }
   .captures-strip::-webkit-scrollbar-thumb {
     background-color: var(--color-dark-1);
     border-radius: 999px;
@@ -227,6 +377,14 @@
     border: var(--stroke-width-s) solid var(--color-dark-1);
     box-shadow: var(--shadow-m);
     position: relative;
+    overflow: hidden;
+  }
+
+  .capture-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
   }
 
   .remove-btn {
@@ -242,9 +400,7 @@
     left: 0.25rem;
   }
 
-  .remove-btn:hover {
-    opacity: 0.75;
-  }
+  .remove-btn:hover { opacity: 0.75; }
 
   .remove-icon {
     width: 2rem;
