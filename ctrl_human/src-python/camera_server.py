@@ -12,6 +12,7 @@ import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 os.environ["OPENCV_LOG_LEVEL"] = "SILENT"
+os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 import cv2
 

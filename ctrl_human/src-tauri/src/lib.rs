@@ -44,6 +44,33 @@ fn camera_server_path() -> PathBuf {
         .join("camera_server.py")
 }
 
+fn extract_pose_path() -> PathBuf {
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    manifest_dir
+        .join("..")
+        .join("src-python")
+        .join("extract_pose.py")
+}
+
+fn pose_model_path() -> PathBuf {
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    manifest_dir
+        .join("..")
+        .join("src-python")
+        .join("models")
+        .join("pose_landmarker_full.task")
+}
+
+fn default_pose_values() -> Vec<serde_json::Value> {
+    (0..33).map(|_| serde_json::json!({ "x": 0.0, "y": 0.0 })).collect()
+}
+
+fn python_ld_library_path() -> String {
+    let existing = std::env::var("LD_LIBRARY_PATH").unwrap_or_default();
+    let sys = "/usr/lib/x86_64-linux-gnu:/usr/lib";
+    if existing.is_empty() { sys.to_string() } else { format!("{}:{}", sys, existing) }
+}
+
 #[tauri::command]
 fn start_camera_stream(
     state: tauri::State<CameraState>,
@@ -59,8 +86,9 @@ fn start_camera_stream(
     let mut child = Command::new(python_path())
         .arg(camera_server_path())
         .arg(camera_index.to_string())
+        .env("LD_LIBRARY_PATH", python_ld_library_path())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(Stdio::inherit())
         .spawn()
         .map_err(|e| format!("Failed to start camera server: {}", e))?;
 
@@ -510,9 +538,33 @@ fn save_pose_image(
         .find(|p| p.get("pose_id").and_then(|v| v.as_str()) == Some(pose_id.as_str()))
         .ok_or_else(|| format!("Pose {} not found", pose_id))?;
 
-    let pose_values: Vec<serde_json::Value> = (0..33)
-        .map(|_| serde_json::json!({ "x": 0.0, "y": 0.0 }))
-        .collect();
+    // Run MediaPipe pose extraction on the saved image
+    let pose_values: Vec<serde_json::Value> = {
+        let output = Command::new(python_path())
+            .arg(extract_pose_path())
+            .arg(&image_path)
+            .arg(pose_model_path())
+            .env("LD_LIBRARY_PATH", python_ld_library_path())
+            .stderr(Stdio::inherit())
+            .output();
+        match output {
+            Ok(out) if out.status.success() => {
+                let stdout = String::from_utf8_lossy(&out.stdout);
+                match serde_json::from_str::<serde_json::Value>(stdout.trim()) {
+                    Ok(serde_json::Value::Array(arr)) if arr.len() == 33 => arr,
+                    _ => {
+                        // null or unexpected output — no pose detected, discard the image
+                        let _ = std::fs::remove_file(&image_path);
+                        return Err("No pose detected in the captured image".to_string());
+                    }
+                }
+            }
+            _ => {
+                let _ = std::fs::remove_file(&image_path);
+                return Err("Pose extraction failed".to_string());
+            }
+        }
+    };
 
     let new_image = serde_json::json!({
         "image_id": image_id,
