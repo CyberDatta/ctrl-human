@@ -61,6 +61,15 @@ fn pose_model_path() -> PathBuf {
         .join("pose_landmarker_full.task")
 }
 
+fn pose_model_lite_path() -> PathBuf {
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    manifest_dir
+        .join("..")
+        .join("src-python")
+        .join("models")
+        .join("pose_landmarker_lite.task")
+}
+
 fn default_pose_values() -> Vec<serde_json::Value> {
     (0..33).map(|_| serde_json::json!({ "x": 0.0, "y": 0.0 })).collect()
 }
@@ -75,6 +84,7 @@ fn python_ld_library_path() -> String {
 fn start_camera_stream(
     state: tauri::State<CameraState>,
     camera_index: u32,
+    with_inference: bool,
 ) -> Result<u16, String> {
     let mut guard = state.0.lock().unwrap();
 
@@ -83,12 +93,18 @@ fn start_camera_stream(
         let _ = child.kill();
     }
 
-    let mut child = Command::new(python_path())
-        .arg(camera_server_path())
+    let mut cmd = Command::new(python_path());
+    cmd.arg(camera_server_path())
         .arg(camera_index.to_string())
         .env("LD_LIBRARY_PATH", python_ld_library_path())
         .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
+        .stderr(Stdio::inherit());
+
+    if with_inference {
+        cmd.arg("--model").arg(pose_model_lite_path());
+    }
+
+    let mut child = cmd
         .spawn()
         .map_err(|e| format!("Failed to start camera server: {}", e))?;
 
@@ -153,10 +169,13 @@ fn list_webcams() -> Result<Vec<Webcam>, String> {
 struct PoseSummary {
     pose_id: String,
     title: String,
+    thumbnail: Option<String>,
 }
 
 #[tauri::command]
 fn load_poses(app: tauri::AppHandle) -> Result<Vec<PoseSummary>, String> {
+    use base64::Engine;
+
     let app_data_dir = app
         .path()
         .app_data_dir()
@@ -171,9 +190,21 @@ fn load_poses(app: tauri::AppHandle) -> Result<Vec<PoseSummary>, String> {
         .as_array()
         .ok_or_else(|| "poses.json is not an array".to_string())?
         .iter()
-        .map(|p| PoseSummary {
-            pose_id: p.get("pose_id").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-            title: p.get("title").and_then(|v| v.as_str()).unwrap_or("Unknown Pose").to_string(),
+        .map(|p| {
+            let pose_id = p.get("pose_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let title = p.get("title").and_then(|v| v.as_str()).unwrap_or("Unknown Pose").to_string();
+            let thumbnail = p
+                .get("images")
+                .and_then(|v| v.as_array())
+                .and_then(|arr| arr.first())
+                .and_then(|img| img.get("image_id")?.as_str().map(|s| s.to_string()))
+                .and_then(|image_id| {
+                    let path = app_data_dir.join("images").join(&pose_id).join(format!("{}.png", image_id));
+                    std::fs::read(&path).ok().map(|bytes| {
+                        format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(&bytes))
+                    })
+                });
+            PoseSummary { pose_id, title, thumbnail }
         })
         .collect();
 
@@ -586,6 +617,86 @@ fn save_pose_image(
     Ok(image_id)
 }
 
+#[derive(Debug, Serialize)]
+struct PosePointF {
+    x: f64,
+    y: f64,
+}
+
+#[derive(Debug, Serialize)]
+struct PoseTestingData {
+    detection_method: String,
+    confidence: f64,
+    active_landmarks: Vec<bool>,
+    /// pose_values arrays from active images only (no image bytes)
+    reference_values: Vec<Vec<PosePointF>>,
+}
+
+#[tauri::command]
+fn load_pose_for_testing(app: tauri::AppHandle, pose_id: String) -> Result<PoseTestingData, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to resolve app data dir: {}", e))?;
+    let poses_file = app_data_dir.join("poses.json");
+
+    let content = std::fs::read_to_string(&poses_file).unwrap_or_else(|_| "[]".to_string());
+    let poses: serde_json::Value =
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse poses.json: {}", e))?;
+
+    let pose = poses
+        .as_array()
+        .ok_or_else(|| "poses.json is not an array".to_string())?
+        .iter()
+        .find(|p| p.get("pose_id").and_then(|v| v.as_str()) == Some(pose_id.as_str()))
+        .ok_or_else(|| format!("Pose {} not found", pose_id))?;
+
+    let detection = pose.get("detection").unwrap_or(&serde_json::Value::Null);
+    let detection_method = detection
+        .get("method")
+        .and_then(|v| v.as_str())
+        .unwrap_or("relative")
+        .to_string();
+    let confidence = detection
+        .get("confidence")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.5);
+
+    let active_landmarks: Vec<bool> = pose
+        .get("active_landmarks")
+        .and_then(|v| v.as_array())
+        .map(|arr| arr.iter().map(|v| v.as_bool().unwrap_or(true)).collect())
+        .unwrap_or_else(|| vec![true; 33]);
+
+    let reference_values: Vec<Vec<PosePointF>> = pose
+        .get("images")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter(|img| {
+                    img.get("active")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false)
+                })
+                .filter_map(|img| {
+                    let vals = img.get("pose_values")?.as_array()?;
+                    let points: Vec<PosePointF> = vals
+                        .iter()
+                        .filter_map(|pt| {
+                            let x = pt.get("x")?.as_f64()?;
+                            let y = pt.get("y")?.as_f64()?;
+                            Some(PosePointF { x, y })
+                        })
+                        .collect();
+                    if points.is_empty() { None } else { Some(points) }
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    Ok(PoseTestingData { detection_method, confidence, active_landmarks, reference_values })
+}
+
 #[tauri::command]
 fn select_webcam(index: u32) -> Result<String, String> {
     let output = Command::new(python_path())
@@ -664,7 +775,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![list_webcams, select_webcam, load_poses, create_pose, delete_pose, load_pose, save_pose, save_pose_image, load_pose_images, set_image_active, delete_pose_image, start_camera_stream, stop_camera_stream])
+        .invoke_handler(tauri::generate_handler![list_webcams, select_webcam, load_poses, create_pose, delete_pose, load_pose, save_pose, save_pose_image, load_pose_images, set_image_active, delete_pose_image, start_camera_stream, stop_camera_stream, load_pose_for_testing])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

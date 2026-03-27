@@ -23,7 +23,7 @@
 
   let searchQuery = '';
 
-  type PoseSummary = { pose_id: string; title: string };
+  type PoseSummary = { pose_id: string; title: string; thumbnail: string | null };
   let poses: PoseSummary[] = [];
 
   async function loadPoses() {
@@ -85,18 +85,14 @@
       <!-- svelte-ignore a11y-click-events-have-key-events -->
       <!-- svelte-ignore a11y-no-static-element-interactions -->
       <div class="pose-card" on:click={() => goto(`/controller-studio/pose-library/edit?id=${pose.pose_id}`)} style="cursor: pointer;">
-        <div class="pose-card-icons">
-          <!-- <button class="icon-btn">
-            <img src={pencilIcon} alt="Edit" class="card-icon" />
-          </button> -->
-          <!-- <button class="icon-btn">
-            <img src={downloadIcon} alt="Download" class="card-icon" />
-          </button> -->
-          <button class="icon-btn" on:click={(e) => deletePose(pose.pose_id, e)}>
+        <div class="pose-card-image">
+          {#if pose.thumbnail}
+            <img src={pose.thumbnail} alt={pose.title} />
+          {/if}
+          <button class="icon-btn trash-btn" on:click={(e) => deletePose(pose.pose_id, e)}>
             <img src={trashIcon} alt="Delete" class="card-icon" />
           </button>
         </div>
-        <div class="pose-card-image"></div>
         <div class="pose-card-label">
           <span class="pose-name">{pose.title}</span>
         </div>
@@ -271,13 +267,6 @@
     flex-direction: column;
   }
 
-  .pose-card-icons {
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-    padding: 1rem 1rem 0rem 0rem;
-  }
-
   .icon-btn {
     background: none;
     border: none;
@@ -300,15 +289,24 @@
   .pose-card-image {
     flex: 1;
     min-height: 11rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    position: relative;
+    overflow: hidden;
   }
 
   .pose-card-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    display: block;
+  }
+
+  .trash-btn {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    /* background-color: var(--color-background); */
+    /* border: var(--stroke-width-s) solid var(--color-dark-1); */
+    padding: 0.4rem;
   }
 
   .pose-card-label {
