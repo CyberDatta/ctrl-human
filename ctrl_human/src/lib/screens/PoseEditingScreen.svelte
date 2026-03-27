@@ -408,7 +408,7 @@
 
           <!-- Test Pose + Export/Delete column -->
           <div class="test-col">
-            <button class="ctrl-btn test-btn">
+            <button class="ctrl-btn test-btn" on:click={() => poseId && goto(`/controller-studio/pose-library/edit/test?id=${poseId}&name=${encodeURIComponent(poseName)}`)}>
               <img src={labFlaskIcon} alt="" class="test-icon" />
               <span>Test Pose</span>
             </button>

@@ -60,7 +60,7 @@
     cameraError = '';
 
     try {
-      const port = await invoke<number>('start_camera_stream', { cameraIndex: index });
+      const port = await invoke<number>('start_camera_stream', { cameraIndex: index, withInference: false });
       pollRunning = true;
       pollLoop(`http://127.0.0.1:${port}/frame`, pollGeneration);
     } catch (err) {
@@ -69,9 +69,10 @@
   }
 
   async function switchCamera() {
-    if (webcams.length <= 1) return;
-    currentWebcamPos = (currentWebcamPos + 1) % webcams.length;
-    await startCamera(webcams[currentWebcamPos].index);
+    const count = webcams.length > 0 ? webcams.length : 10;
+    currentWebcamPos = (currentWebcamPos + 1) % count;
+    const idx = webcams.length > 0 ? webcams[currentWebcamPos].index : currentWebcamPos;
+    await startCamera(idx);
   }
 
   // ── Selfie countdown + capture ──
@@ -175,7 +176,6 @@
       <button
         class="action-btn switch-btn"
         on:click={switchCamera}
-        disabled={webcams.length <= 1}
       >
         <img src={switchCardIcon} alt="" class="action-icon" />
         <span>Switch Camera</span>
