@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { tick, onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { invoke } from '@tauri-apps/api/core';
   import '$lib/styles/tokens.css';
@@ -16,11 +16,19 @@
   let schemeOpen = false;
   let webcamOpen = false;
 
-  const schemes = ['Minecraft', 'Fortnite', 'Valorant', 'CS2'];
+  type Scheme = { controller_id: string; title: string };
+  let schemes: Scheme[] = [];
   let webcams: Webcam[] = [];
+
+  onMount(async () => {
+    try {
+      const controllers = await invoke<{ controller_id: string; title: string; hotkey: boolean }[]>('load_controllers');
+      schemes = controllers.filter(c => c.hotkey).map(c => ({ controller_id: c.controller_id, title: c.title }));
+    } catch (e) { console.error('load_controllers failed:', e); }
+  });
   let webcamsLoading = false;
 
-  let selectedScheme = 'Controller';
+  let selectedScheme: Scheme | null = null;
   let selectedWebcam = 'Webcam';
   let showError = false;
 
@@ -49,7 +57,7 @@
     }
   }
 
-  function pickScheme(scheme: string) {
+  function pickScheme(scheme: Scheme) {
     selectedScheme = scheme;
     schemeOpen = false;
   }
@@ -59,10 +67,17 @@
   }
 
   function startPlaying() {
-    if (selectedWebcam === 'Webcam') {
+    if (!selectedScheme) {
       showError = true;
       return;
     }
+    goto(
+      `/controller-studio/controller-library/edit/test` +
+      `?id=${selectedScheme.controller_id}` +
+      `&name=${encodeURIComponent(selectedScheme.title)}` +
+      `&back=${encodeURIComponent('/')}` +
+      `&backText=${encodeURIComponent('Home')}`
+    );
   }
 
   function dismissError() {
@@ -94,18 +109,22 @@
       <div class="dropdowns">
         <div class="dropdown">
           <button class="dropdown-toggle" class:active={schemeOpen} on:click={toggleScheme}>
-            <span>{selectedScheme}</span>
+            <span>{selectedScheme ? selectedScheme.title : 'Controller'}</span>
             <img src={chunkyArrow} alt="" class="dropdown-arrow" class:open={schemeOpen} />
           </button>
           {#if schemeOpen}
             <ul class="dropdown-menu">
-              {#each schemes as scheme}
-                <li><button class="dropdown-item" on:click={() => pickScheme(scheme)}>{scheme}</button></li>
-              {/each}
+              {#if schemes.length === 0}
+                <li><span class="dropdown-item">No controllers enabled</span></li>
+              {:else}
+                {#each schemes as scheme}
+                  <li><button class="dropdown-item" on:click={() => pickScheme(scheme)}>{scheme.title}</button></li>
+                {/each}
+              {/if}
             </ul>
           {/if}
         </div>
-        <div class="dropdown">
+        <!-- <div class="dropdown">
           <button class="dropdown-toggle" class:active={webcamOpen} on:click={toggleWebcam}>
             <span>{selectedWebcam}</span>
             <img src={chunkyArrow} alt="" class="dropdown-arrow" class:open={webcamOpen} />
@@ -121,7 +140,7 @@
               {/each}
             {/if}
           </ul>
-        </div>
+        </div> -->
       </div>
       <img src={posingImg} alt="Posing in front of PC" class="hero-img" />
       <h1 class="box-heading box-heading-2">Controller</h1>
@@ -135,7 +154,7 @@
       <div class="error-modal" on:click|stopPropagation>
         <img src={errorIcon} alt="Error" class="error-icon" />
         <h2 class="error-title">Error!</h2>
-        <p class="error-text">Please choose a webcam to enable body tracking.</p>
+        <p class="error-text">Please choose a controller scheme.</p>
         <button class="error-btn" on:click={dismissError}>Got It!</button>
       </div>
     </div>

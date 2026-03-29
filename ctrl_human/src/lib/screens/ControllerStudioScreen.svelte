@@ -1,39 +1,34 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { onMount } from 'svelte';
+  import { invoke } from '@tauri-apps/api/core';
   import '$lib/styles/tokens.css';
   import frogImg from '$lib/assets/images/sitting_toad_posing_webcam.png';
   import checkedIcon from '$lib/assets/icons/checked.svg';
   import uncheckedIcon from '$lib/assets/icons/unchecked.svg';
 
-  function goHome() {
-    goto('/');
-  }
+  function goHome() { goto('/'); }
+  function goToPoseLibrary() { goto('/controller-studio/pose-library'); }
+  function goToControllerLibrary() { goto('/controller-studio/controller-library'); }
 
-  function goToPoseLibrary() {
-    goto('/controller-studio/pose-library');
-  }
+  type Scheme = { controller_id: string; name: string; hotkey: boolean };
+  let schemes: Scheme[] = [];
 
-  function goToControllerLibrary() {
-    goto('/controller-studio/controller-library');
-  }
+  onMount(async () => {
+    try {
+      const controllers = await invoke<{ controller_id: string; title: string; hotkey: boolean }[]>('load_controllers');
+      schemes = controllers.map(c => ({ controller_id: c.controller_id, name: c.title, hotkey: c.hotkey }));
+    } catch (e) { console.error('load_controllers failed:', e); }
+  });
 
-  let schemes = [
-    { name: 'Hollow Knight', enabled: true },
-    { name: 'Elden Ring', enabled: false },
-    { name: 'Minecraft', enabled: false },
-    { name: 'Fortnite', enabled: true },
-    { name: 'Valorant', enabled: false },
-    { name: 'CS2', enabled: false },
-    { name: 'Celeste', enabled: false },
-    { name: 'Stardew Valley', enabled: false },
-    { name: 'Stardew Valley', enabled: false },
-    { name: 'Stardew Valley', enabled: false },
-    { name: 'Stardew Valley', enabled: false },
-    { name: 'Stardew Valley', enabled: false },
-  ];
-
-  function toggleScheme(index: number) {
-    schemes[index].enabled = !schemes[index].enabled;
+  async function toggleScheme(index: number) {
+    const scheme = schemes[index];
+    const newHotkey = !scheme.hotkey;
+    try {
+      await invoke('set_controller_hotkey', { controllerId: scheme.controller_id, hotkey: newHotkey });
+      schemes[index] = { ...scheme, hotkey: newHotkey };
+      schemes = schemes;
+    } catch (e) { console.error('set_controller_hotkey failed:', e); }
   }
 </script>
 
@@ -78,7 +73,7 @@
       {#each schemes as scheme, i}
         <button class="scheme-item" on:click={() => toggleScheme(i)}>
           <span class="scheme-name">{scheme.name}</span>
-          <img src={scheme.enabled ? checkedIcon : uncheckedIcon} alt={scheme.enabled ? 'Enabled' : 'Disabled'} class="scheme-checkbox" />
+          <img src={scheme.hotkey ? checkedIcon : uncheckedIcon} alt={scheme.hotkey ? 'Enabled' : 'Disabled'} class="scheme-checkbox" />
         </button>
       {/each}
     </div>

@@ -1,35 +1,89 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
+  import { invoke } from '@tauri-apps/api/core';
+  import { onMount } from 'svelte';
   import '$lib/styles/tokens.css';
   import pencilIcon from '$lib/assets/icons/pencil.svg';
   import labFlaskIcon from '$lib/assets/icons/lab_flask.svg';
   import chunkyArrow from '$lib/assets/icons/chunky_arrow.svg';
+  import crossIcon from '$lib/assets/icons/cross.svg';
 
   function goBack() {
     goto('/controller-studio/controller-library');
   }
 
+  const controllerId = $page.url.searchParams.get('id') ?? '';
+
+  type SavedPose = { pose_id: string; priority: number; input_type: string; input: string[] };
+
+  onMount(async () => {
+    let savedPoses: SavedPose[] = [];
+    const [poses] = await Promise.all([
+      invoke<PoseSummary[]>('load_poses').catch(() => []),
+      controllerId
+        ? invoke<{ controller_id: string; title: string; description: string; poses: SavedPose[] }>('load_controller', { controllerId })
+            .then(data => { schemeName = data.title; description = data.description; savedPoses = data.poses ?? []; })
+            .catch(e => console.error('load_controller failed:', e))
+        : Promise.resolve(),
+    ]);
+    availablePoses = poses;
+    if (savedPoses.length > 0) {
+      poseRows = savedPoses.map(p => ({
+        id: nextId++,
+        pose_id: p.pose_id,
+        poseName: poses.find(ap => ap.pose_id === p.pose_id)?.title ?? 'Unknown Pose',
+        priority: p.priority != null ? String(p.priority) : 'Priority',
+        inputType: p.input_type || 'Input Type',
+        input: p.input?.length ? p.input.join(' + ') : 'Input',
+      }));
+    }
+  });
+
+  async function persistController() {
+    if (!controllerId) return;
+    try {
+      const poses = poseRows.map(r => ({
+        pose_id: r.pose_id,
+        priority: parseInt(r.priority) || 0,
+        input_type: r.inputType === 'Input Type' ? '' : r.inputType,
+        input: (r.input === 'Input' || r.input === '') ? [] : r.input.split(' + '),
+      }));
+      await invoke('save_controller', { controllerId, title: schemeName, description, poses });
+    } catch (e) {
+      console.error('save_controller failed:', e);
+    }
+  }
+
   // ── Title editing ──
-  let schemeName = 'Untitled Scheme 5';
+  let schemeName = '';
   let editingTitle = false;
   let titleDraft = '';
   function startEditTitle() { titleDraft = schemeName; editingTitle = true; }
-  function commitTitle() { if (titleDraft.trim()) schemeName = titleDraft.trim(); editingTitle = false; }
+  async function commitTitle() {
+    if (titleDraft.trim()) schemeName = titleDraft.trim();
+    editingTitle = false;
+    await persistController();
+  }
   function onTitleKey(e: KeyboardEvent) {
     if (e.key === 'Enter') commitTitle();
     if (e.key === 'Escape') editingTitle = false;
   }
 
   // ── Description editing ──
-  let description = 'This is a sample description of what this project does. This is a sample description of what this project does. This is a sample description of what this project does.';
+  let description = '';
   let editingDesc = false;
   let descDraft = '';
   function startEditDesc() { descDraft = description; editingDesc = true; }
-  function commitDesc() { if (descDraft.trim()) description = descDraft.trim(); editingDesc = false; }
+  async function commitDesc() {
+    if (descDraft.trim()) description = descDraft.trim();
+    editingDesc = false;
+    await persistController();
+  }
 
   // ── Dropdown options ──
-  const priorityOptions = ['1 - Highest', '2', '3', '4', '5 - Lowest'];
-  const inputTypeOptions = ['Keyboard', 'Mouse Button', 'Mouse Move', 'Gamepad'];
+  const priorityOptions = Array.from({ length: 999 }, (_, i) => String(i + 1));
+  const inputTypeOptions = ['Tap', 'Press', 'Crazy Tap'];
 
   // ── Per-row dropdown state ──
   type DropdownField = 'priority' | 'inputType';
@@ -43,56 +97,102 @@
     }
   }
 
-  function pickOption(rowId: number, field: DropdownField, value: string) {
+  async function pickOption(rowId: number, field: DropdownField, value: string) {
     poseRows = poseRows.map(r => r.id === rowId ? { ...r, [field]: value } : r);
     openDropdown = null;
+    await persistController();
   }
 
   // ── Pose mappings ──
-  type PoseRow = { id: number; poseName: string; priority: string; inputType: string; input: string };
-  let poseRows: PoseRow[] = [
-    { id: 1, poseName: 'Wave 2 hand', priority: 'Priority', inputType: 'Input Type', input: 'Input' },
-    { id: 2, poseName: 'Wave 2 hand', priority: 'Priority', inputType: 'Input Type', input: 'Input' },
-    { id: 3, poseName: 'Wave 2 hand', priority: 'Priority', inputType: 'Input Type', input: 'Input' },
-    { id: 4, poseName: 'Wave 2 hand', priority: 'Priority', inputType: 'Input Type', input: 'Input' },
-    { id: 5, poseName: 'Wave 2 hand', priority: 'Priority', inputType: 'Input Type', input: 'Input' },
-    { id: 6, poseName: 'Wave 2 hand', priority: 'Priority', inputType: 'Input Type', input: 'Input' },
-    { id: 7, poseName: 'Wave 2 hand', priority: 'Priority', inputType: 'Input Type', input: 'Input' },
-    { id: 8, poseName: 'Wave 2 hand', priority: 'Priority', inputType: 'Input Type', input: 'Input' },
-    { id: 9, poseName: 'Wave 2 hand', priority: 'Priority', inputType: 'Input Type', input: 'Input' },
-  ];
-  let nextId = Math.max(...poseRows.map(r => r.id)) + 1;
+  type PoseRow = { id: number; pose_id: string; poseName: string; priority: string; inputType: string; input: string };
+  let poseRows: PoseRow[] = [];
+  let nextId = 1;
 
-  function addPose(poseName: string) {
-    poseRows = [...poseRows, { id: nextId++, poseName, priority: 'Priority', inputType: 'Input Type', input: 'Input' }];
+  function addPose(pose: PoseSummary) {
+    poseRows = [...poseRows, { id: nextId++, pose_id: pose.pose_id, poseName: pose.title, priority: 'Priority', inputType: 'Input Type', input: 'Input' }];
     openDropdown = null;
+    persistController();
   }
 
-  function removeRow(id: number) {
+  async function removeRow(id: number) {
     poseRows = poseRows.filter(r => r.id !== id);
     openDropdown = null;
+    await persistController();
   }
 
   // ── Available poses (sidebar) ──
-  const availablePoses = [
-    { name: 'Wave one hand' },
-    { name: 'Wave 2 hand' },
-    { name: 'Wave 2 hand' },
-    { name: 'Wave 2 hand' },
-    { name: 'Wave 2 hand' },
-    { name: 'Wave 2 hand' },
-    { name: 'Wave 2 hand' },
-    { name: 'Wave 2 hand' },
-    { name: 'Wave 2 hand' },
-    { name: 'Wave 2 hand' },
-    { name: 'Wave 2 hand' },
-    { name: 'Wave 2 hand' },
-    { name: 'Wave 2 hand' },
-    { name: 'Wave 2 hand' },
-  ];
+  type PoseSummary = { pose_id: string; title: string; thumbnail: string | null };
+  let availablePoses: PoseSummary[] = [];
+
+  // ── Key capture popup ──
+  let keyCaptureRowId: number | null = null;
+  let heldKeys: Set<string> = new Set();
+  let capturedCombo: string = '';
+
+  const KEY_LABELS: Record<string, string> = {
+    ' ': 'Space', 'Control': 'Ctrl', 'Alt': 'Alt', 'Shift': 'Shift',
+    'Meta': 'Win', 'Enter': 'Enter', 'Backspace': 'Backspace', 'Delete': 'Delete',
+    'Escape': 'Esc', 'Tab': 'Tab', 'CapsLock': 'CapsLock', 'ArrowUp': '↑',
+    'ArrowDown': '↓', 'ArrowLeft': '←', 'ArrowRight': '→', 'Home': 'Home',
+    'End': 'End', 'PageUp': 'PgUp', 'PageDown': 'PgDn', 'Insert': 'Insert',
+    'F1':'F1','F2':'F2','F3':'F3','F4':'F4','F5':'F5','F6':'F6',
+    'F7':'F7','F8':'F8','F9':'F9','F10':'F10','F11':'F11','F12':'F12',
+  };
+
+  function labelForKey(key: string): string {
+    return KEY_LABELS[key] ?? key.toLowerCase();
+  }
+
+function openKeyCapture(rowId: number) {
+    keyCaptureRowId = rowId;
+    heldKeys = new Set();
+    capturedCombo = '';
+    openDropdown = null;
+  }
+
+  function onPopupKeyDown(e: KeyboardEvent) {
+    if (keyCaptureRowId === null) return;
+    e.preventDefault();
+    heldKeys = new Set([...heldKeys, e.key]);
+    capturedCombo = buildComboWithMouse();
+  }
+
+  function onPopupKeyUp(_e: KeyboardEvent) {
+    // Don't remove from heldKeys — keep showing the full combo after release.
+  }
+
+  function commitKeyCombo() {
+    if (!capturedCombo || keyCaptureRowId === null) { closeKeyCapture(); return; }
+    poseRows = poseRows.map(r => r.id === keyCaptureRowId ? { ...r, input: capturedCombo } : r);
+    closeKeyCapture();
+    persistController();
+  }
+
+  function closeKeyCapture() {
+    keyCaptureRowId = null;
+    heldKeys = new Set();
+    capturedCombo = '';
+  }
+
+  const MOUSE_LABELS: Record<number, string> = { 0: 'Left Click', 1: 'Middle Click', 2: 'Right Click' };
+
+  function onDisplayMouseDown(e: MouseEvent) {
+    e.preventDefault();
+    const label = MOUSE_LABELS[e.button];
+    if (!label) return;
+    heldKeys = new Set([...heldKeys, `__mouse_${e.button}`]);
+    capturedCombo = buildComboWithMouse();
+  }
+
+  function buildComboWithMouse(): string {
+    return [...heldKeys].map(k => {
+      const m = k.match(/^__mouse_(\d+)$/);
+      return m ? MOUSE_LABELS[Number(m[1])] : labelForKey(k);
+    }).join(' + ');
+  }
 </script>
 
-<div class="controller-editor">
+<div class="controller-editor" style="display: flex; flex-wrap: nowrap; background-color: var(--color-tertiary-3);">
 
   <!-- ── Main panel ── -->
   <div class="main-panel">
@@ -146,12 +246,20 @@
 
     <!-- Action buttons -->
     <div class="action-row">
-      <button class="action-btn test-btn">
+      <button class="action-btn test-btn" on:click={() => goto(`/controller-studio/controller-library/edit/test?id=${controllerId}&name=${encodeURIComponent(schemeName)}`)}>
         <!-- <img src={labFlaskIcon} alt="" class="action-icon" /> -->
         Test Scheme
       </button>
-      <button class="action-btn export-btn">Export Scheme</button>
-      <button class="action-btn delete-btn">Delete Scheme</button>
+      <!-- <button class="action-btn export-btn">Export Scheme</button> -->
+      <button class="action-btn delete-btn" on:click={async () => {
+        if (!controllerId) return;
+        try {
+          await invoke('delete_controller', { controllerId });
+          goto('/controller-studio/controller-library');
+        } catch (e) {
+          console.error('delete_controller failed:', e);
+        }
+      }}>Delete Scheme</button>
     </div>
 
     <!-- Detection Method card -->
@@ -174,7 +282,7 @@
                   <img src={chunkyArrow} alt="" class="dropdown-arrow" class:open={openDropdown?.rowId === row.id && openDropdown?.field === 'priority'} />
                 </button>
                 {#if openDropdown?.rowId === row.id && openDropdown?.field === 'priority'}
-                  <ul class="dropdown-menu">
+                  <ul class="dropdown-menu dropdown-menu--scroll">
                     {#each priorityOptions as opt}
                       <li>
                         <button class="dropdown-item" on:click={() => pickOption(row.id, 'priority', opt)}>
@@ -209,8 +317,8 @@
                 {/if}
               </div>
 
-              <!-- Input (plain button for now) -->
-              <button class="input-btn">{row.input}</button>
+              <!-- Input -->
+              <button class="input-btn" on:click={() => openKeyCapture(row.id)}>{row.input}</button>
 
               <!-- Remove -->
               <button class="remove-btn" on:click={() => removeRow(row.id)} aria-label="Remove pose">
@@ -237,14 +345,36 @@
     </div>
     <div class="sidebar-scroll">
       {#each availablePoses as pose}
-        <button class="pose-card" on:click={() => addPose(pose.name)}>
-          {pose.name}
+        <button class="pose-card" on:click={() => addPose(pose)}>
+          {pose.title}
         </button>
       {/each}
     </div>
   </aside>
 
 </div>
+
+<svelte:window on:keydown={onPopupKeyDown} on:keyup={onPopupKeyUp} />
+
+<!-- ── Key capture popup ── -->
+{#if keyCaptureRowId !== null}
+  <div class="kc-overlay" role="dialog">
+    <div class="kc-popup">
+      <button class="kc-close" on:click={closeKeyCapture} aria-label="Close">
+        <img src={crossIcon} alt="" class="kc-close-icon" />
+      </button>
+      <h2 class="kc-heading">Enter Your Key Combination</h2>
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
+      <div class="kc-display"
+        on:mousedown={onDisplayMouseDown}
+        on:contextmenu|preventDefault
+      >
+        <span class="kc-combo">{capturedCombo || ''}</span>
+      </div>
+      <button class="kc-done" on:click={commitKeyCombo}>Done</button>
+    </div>
+  </div>
+{/if}
 
 <style>
   /* ── Root layout ── */
@@ -471,7 +601,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background-color: var(--color-secondary-4);
+    background-color: var(--color-primary-2);
     border: var(--stroke-width-s) solid var(--color-dark-1);
     box-shadow: var(--shadow-s);
     padding: 0.85rem 1.25rem;
@@ -553,6 +683,11 @@
     border-top: none;
     box-shadow: var(--shadow-m);
     z-index: 20;
+  }
+
+  .dropdown-menu--scroll {
+    max-height: calc(5 * 2.4rem);
+    overflow-y: auto;
   }
 
   .dropdown-menu li {
@@ -685,6 +820,95 @@
   }
 
   .pose-card:hover {
+    background-color: var(--color-mouse-hover);
+    color: var(--color-white);
+  }
+
+  /* ── Key capture popup ── */
+  .kc-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+
+  .kc-popup {
+    position: relative;
+    background-color: var(--color-primary-4);
+    border: var(--stroke-width-s) solid var(--color-dark-1);
+    box-shadow: var(--shadow-l);
+    padding: 3rem 3rem 2.5rem 3rem;
+    width: 36rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  .kc-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+  }
+
+  .kc-close-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .kc-heading {
+    font-weight: var(--font-weight-H1);
+    font-size: var(--font-size-H1);
+    line-height: var(--line-height-H1);
+    color: var(--color-dark-1);
+    margin: 0;
+    text-align: center;
+  }
+
+  .kc-display {
+    width: 100%;
+    background-color: var(--color-background);
+    border: var(--stroke-width-s) solid var(--color-dark-1);
+    box-shadow: var(--shadow-s);
+    padding: 1rem 1.25rem;
+    min-height: 3.5rem;
+    display: flex;
+    align-items: center;
+    cursor: crosshair;
+    user-select: none;
+  }
+
+  .kc-combo {
+    font-family: var(--font-primary);
+    font-weight: var(--font-weight-H3);
+    font-size: var(--font-size-H3);
+    line-height: var(--line-height-H3);
+    color: var(--color-dark-1);
+    word-break: break-all;
+  }
+
+  .kc-done {
+    background-color: var(--color-tertiary-2);
+    border: var(--stroke-width-s) solid var(--color-dark-1);
+    box-shadow: var(--shadow-m);
+    cursor: pointer;
+    font-family: var(--font-primary);
+    font-weight: var(--font-weight-H2);
+    font-size: var(--font-size-H2);
+    line-height: var(--line-height-H2);
+    color: var(--color-dark-1);
+    padding: 0.75rem 3rem;
+  }
+
+  .kc-done:hover {
     background-color: var(--color-mouse-hover);
     color: var(--color-white);
   }

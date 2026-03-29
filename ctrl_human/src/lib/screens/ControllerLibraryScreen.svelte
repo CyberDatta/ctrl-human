@@ -1,5 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { invoke } from '@tauri-apps/api/core';
+  import { onMount } from 'svelte';
   import '$lib/styles/tokens.css';
   import magnifyingGlass from '$lib/assets/icons/magnifying_glass.svg';
   import uploadIcon from '$lib/assets/icons/arrow_for_upload.svg';
@@ -12,23 +14,41 @@
     goto('/controller-studio');
   }
 
-  function goToControllerEditing() {
-    goto('/controller-studio/controller-library/edit');
-  }
-
   let searchQuery = '';
 
-  let controllers = [
-    { name: 'Wave with both Hands' },
-    { name: 'Wave with one Hand' },
-  ];
+  interface ControllerSummary {
+    controller_id: string;
+    title: string;
+  }
+
+  let controllers: ControllerSummary[] = [];
+
+  onMount(async () => {
+    controllers = await invoke<ControllerSummary[]>('load_controllers');
+  });
+
+  async function deleteController(controller_id: string) {
+    try {
+      await invoke('delete_controller', { controllerId: controller_id });
+      controllers = await invoke<ControllerSummary[]>('load_controllers');
+    } catch (e) {
+      console.error('delete_controller failed:', e);
+    }
+  }
+
+  async function createController() {
+    const controller_id = await invoke<string>('create_controller');
+    controllers = await invoke<ControllerSummary[]>('load_controllers');
+    goto(`/controller-studio/controller-library/edit?id=${controller_id}`);
+  }
 
   $: filteredControllers = controllers.filter(c =>
-    c.name.toLowerCase().includes(searchQuery.toLowerCase())
+    c.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 </script>
 
 <main class="controller-library">
+  <div class="page-content">
   <nav class="top-bar">
     <button class="back-btn" on:click={goBack}>
       <svg class="back-arrow" viewBox="0 0 33 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -54,11 +74,11 @@
     </div>
 
     <div class="action-buttons">
-      <button class="action-btn action-btn-import">
+      <!-- <button class="action-btn action-btn-import">
         <img src={uploadIcon} alt="Import" class="action-icon" />
         <span>Import From Controller File</span>
-      </button>
-      <button class="action-btn action-btn-create" on:click={goToControllerEditing}>
+      </button> -->
+      <button class="action-btn action-btn-create" on:click={createController}>
         <img src={cameraIcon} alt="Create" class="action-icon" />
         <span>Create New Controller Scheme</span>
       </button>
@@ -66,25 +86,22 @@
   </div>
 
   <div class="controllers-grid">
-    {#each filteredControllers as controller}
-      <div class="controller-card">
+    {#each filteredControllers as controller} 
+      <!-- svelte-ignore a11y-click-events-have-key-events -->
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
+      <div class="controller-card" on:click={() => goto(`/controller-studio/controller-library/edit?id=${controller.controller_id}`)} style="cursor: pointer;">
         <div class="controller-card-icons">
-          <button class="icon-btn">
-            <img src={pencilIcon} alt="Edit" class="card-icon" />
-          </button>
-          <button class="icon-btn">
-            <img src={downloadIcon} alt="Download" class="card-icon" />
-          </button>
-          <button class="icon-btn">
+          <button class="icon-btn" on:click|stopPropagation={() => deleteController(controller.controller_id)}>
             <img src={trashIcon} alt="Delete" class="card-icon" />
           </button>
         </div>
         <div class="controller-card-image"></div>
         <div class="controller-card-label">
-          <span class="controller-name">{controller.name}</span>
+          <span class="controller-name">{controller.title}</span>
         </div>
       </div>
     {/each}
+  </div>
   </div>
 </main>
 
@@ -95,7 +112,11 @@
     background-color: var(--color-primary-1);
     box-sizing: border-box;
     overflow-y: auto;
-    padding: 4rem 4rem 4rem 4rem;
+  }
+
+  .page-content {
+    padding: 4rem;
+    box-sizing: border-box;
   }
 
   /* ── Nav ── */
