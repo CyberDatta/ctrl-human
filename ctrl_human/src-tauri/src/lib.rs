@@ -1,3 +1,4 @@
+use enigo::{Button, Direction, Enigo, Key, Keyboard, Mouse, Settings};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
@@ -697,6 +698,413 @@ fn load_pose_for_testing(app: tauri::AppHandle, pose_id: String) -> Result<PoseT
     Ok(PoseTestingData { detection_method, confidence, active_landmarks, reference_values })
 }
 
+#[derive(Debug, Serialize)]
+struct PoseTestingEntry {
+    pose_id: String,
+    detection_method: String,
+    confidence: f64,
+    active_landmarks: Vec<bool>,
+    reference_values: Vec<Vec<PosePointF>>,
+}
+
+#[tauri::command]
+fn load_poses_for_testing(app: tauri::AppHandle, pose_ids: Vec<String>) -> Result<Vec<PoseTestingEntry>, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to resolve app data dir: {}", e))?;
+    let poses_file = app_data_dir.join("poses.json");
+
+    let content = std::fs::read_to_string(&poses_file).unwrap_or_else(|_| "[]".to_string());
+    let poses: serde_json::Value =
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse poses.json: {}", e))?;
+    let poses_arr = poses
+        .as_array()
+        .ok_or_else(|| "poses.json is not an array".to_string())?;
+
+    let mut entries = Vec::new();
+    for pose_id in &pose_ids {
+        let pose = match poses_arr
+            .iter()
+            .find(|p| p.get("pose_id").and_then(|v| v.as_str()) == Some(pose_id.as_str()))
+        {
+            Some(p) => p,
+            None => continue,
+        };
+
+        let detection = pose.get("detection").unwrap_or(&serde_json::Value::Null);
+        let detection_method = detection
+            .get("method")
+            .and_then(|v| v.as_str())
+            .unwrap_or("relative")
+            .to_string();
+        let confidence = detection
+            .get("confidence")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.5);
+        let active_landmarks: Vec<bool> = pose
+            .get("active_landmarks")
+            .and_then(|v| v.as_array())
+            .map(|arr| arr.iter().map(|v| v.as_bool().unwrap_or(true)).collect())
+            .unwrap_or_else(|| vec![true; 33]);
+        let reference_values: Vec<Vec<PosePointF>> = pose
+            .get("images")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter(|img| img.get("active").and_then(|v| v.as_bool()).unwrap_or(false))
+                    .filter_map(|img| {
+                        let vals = img.get("pose_values")?.as_array()?;
+                        let points: Vec<PosePointF> = vals
+                            .iter()
+                            .filter_map(|pt| {
+                                let x = pt.get("x")?.as_f64()?;
+                                let y = pt.get("y")?.as_f64()?;
+                                Some(PosePointF { x, y })
+                            })
+                            .collect();
+                        if points.is_empty() { None } else { Some(points) }
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        entries.push(PoseTestingEntry { pose_id: pose_id.clone(), detection_method, confidence, active_landmarks, reference_values });
+    }
+
+    Ok(entries)
+}
+
+#[derive(Debug, Serialize, Clone)]
+struct ControllerSummary {
+    controller_id: String,
+    title: String,
+    hotkey: bool,
+}
+
+#[tauri::command]
+fn load_controllers(app: tauri::AppHandle) -> Result<Vec<ControllerSummary>, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to resolve app data dir: {}", e))?;
+    let controllers_file = app_data_dir.join("controllers.json");
+
+    let content = std::fs::read_to_string(&controllers_file).unwrap_or_else(|_| "[]".to_string());
+    let controllers: serde_json::Value =
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse controllers.json: {}", e))?;
+
+    let summaries = controllers
+        .as_array()
+        .ok_or_else(|| "controllers.json is not an array".to_string())?
+        .iter()
+        .map(|c| {
+            let controller_id = c.get("controller_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let title = c.get("title").and_then(|v| v.as_str()).unwrap_or("Unknown Controller").to_string();
+            let hotkey = c.get("hotkey").and_then(|v| v.as_bool()).unwrap_or(false);
+            ControllerSummary { controller_id, title, hotkey }
+        })
+        .collect();
+
+    Ok(summaries)
+}
+
+#[tauri::command]
+fn set_controller_hotkey(app: tauri::AppHandle, controller_id: String, hotkey: bool) -> Result<(), String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to resolve app data dir: {}", e))?;
+    let controllers_file = app_data_dir.join("controllers.json");
+
+    let content = std::fs::read_to_string(&controllers_file).unwrap_or_else(|_| "[]".to_string());
+    let mut controllers: serde_json::Value =
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse controllers.json: {}", e))?;
+
+    let controllers_arr = controllers
+        .as_array_mut()
+        .ok_or_else(|| "controllers.json is not an array".to_string())?;
+
+    let controller = controllers_arr
+        .iter_mut()
+        .find(|c| c.get("controller_id").and_then(|v| v.as_str()) == Some(controller_id.as_str()))
+        .ok_or_else(|| format!("Controller {} not found", controller_id))?;
+
+    controller["hotkey"] = serde_json::Value::Bool(hotkey);
+
+    let serialized = serde_json::to_string_pretty(&controllers)
+        .map_err(|e| format!("Failed to serialize controllers: {}", e))?;
+    std::fs::write(&controllers_file, serialized)
+        .map_err(|e| format!("Failed to write controllers.json: {}", e))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+fn create_controller(app: tauri::AppHandle) -> Result<String, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to resolve app data dir: {}", e))?;
+    let controllers_file = app_data_dir.join("controllers.json");
+
+    let content = std::fs::read_to_string(&controllers_file).unwrap_or_else(|_| "[]".to_string());
+    let mut controllers: serde_json::Value =
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse controllers.json: {}", e))?;
+    let controllers_arr = controllers
+        .as_array_mut()
+        .ok_or_else(|| "controllers.json is not an array".to_string())?;
+
+    let controller_id = loop {
+        let id = uuid::Uuid::new_v4().to_string();
+        let duplicate = controllers_arr
+            .iter()
+            .any(|c| c.get("controller_id").and_then(|v| v.as_str()) == Some(id.as_str()));
+        if !duplicate {
+            break id;
+        }
+    };
+
+    let new_controller = serde_json::json!({
+        "controller_id": controller_id,
+        "title": "Unknown Controller",
+        "description": "This is space to enter a description.",
+        "poses": [],
+        "hotkey": false
+    });
+
+    controllers_arr.push(new_controller);
+
+    let serialized = serde_json::to_string_pretty(&controllers)
+        .map_err(|e| format!("Failed to serialize controllers: {}", e))?;
+    std::fs::write(&controllers_file, serialized)
+        .map_err(|e| format!("Failed to write controllers.json: {}", e))?;
+
+    Ok(controller_id)
+}
+
+#[tauri::command]
+fn delete_controller(app: tauri::AppHandle, controller_id: String) -> Result<(), String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to resolve app data dir: {}", e))?;
+    let controllers_file = app_data_dir.join("controllers.json");
+
+    let content = std::fs::read_to_string(&controllers_file).unwrap_or_else(|_| "[]".to_string());
+    let mut controllers: serde_json::Value =
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse controllers.json: {}", e))?;
+    let controllers_arr = controllers
+        .as_array_mut()
+        .ok_or_else(|| "controllers.json is not an array".to_string())?;
+
+    controllers_arr.retain(|c| c.get("controller_id").and_then(|v| v.as_str()) != Some(controller_id.as_str()));
+
+    let serialized = serde_json::to_string_pretty(&controllers)
+        .map_err(|e| format!("Failed to serialize controllers: {}", e))?;
+    std::fs::write(&controllers_file, serialized)
+        .map_err(|e| format!("Failed to write controllers.json: {}", e))?;
+
+    Ok(())
+}
+
+#[derive(Debug, Deserialize)]
+struct PoseSave {
+    pose_id: String,
+    priority: u32,
+    input_type: String,
+    input: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct ControllerFull {
+    controller_id: String,
+    title: String,
+    description: String,
+    poses: Vec<serde_json::Value>,
+}
+
+#[tauri::command]
+fn load_controller(app: tauri::AppHandle, controller_id: String) -> Result<ControllerFull, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to resolve app data dir: {}", e))?;
+    let controllers_file = app_data_dir.join("controllers.json");
+
+    let content = std::fs::read_to_string(&controllers_file).unwrap_or_else(|_| "[]".to_string());
+    let controllers: serde_json::Value =
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse controllers.json: {}", e))?;
+
+    let controller = controllers
+        .as_array()
+        .ok_or_else(|| "controllers.json is not an array".to_string())?
+        .iter()
+        .find(|c| c.get("controller_id").and_then(|v| v.as_str()) == Some(controller_id.as_str()))
+        .ok_or_else(|| format!("Controller {} not found", controller_id))?;
+
+    let poses = controller.get("poses")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    Ok(ControllerFull {
+        controller_id: controller_id.clone(),
+        title: controller.get("title").and_then(|v| v.as_str()).unwrap_or("Unknown Controller").to_string(),
+        description: controller.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+        poses,
+    })
+}
+
+#[tauri::command]
+fn save_controller(
+    app: tauri::AppHandle,
+    controller_id: String,
+    title: String,
+    description: String,
+    poses: Vec<PoseSave>,
+) -> Result<(), String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to resolve app data dir: {}", e))?;
+    let controllers_file = app_data_dir.join("controllers.json");
+
+    let content = std::fs::read_to_string(&controllers_file).unwrap_or_else(|_| "[]".to_string());
+    let mut controllers: serde_json::Value =
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse controllers.json: {}", e))?;
+
+    let controller = controllers
+        .as_array_mut()
+        .ok_or_else(|| "controllers.json is not an array".to_string())?
+        .iter_mut()
+        .find(|c| c.get("controller_id").and_then(|v| v.as_str()) == Some(controller_id.as_str()))
+        .ok_or_else(|| format!("Controller {} not found", controller_id))?;
+
+    controller["title"] = serde_json::json!(title);
+    controller["description"] = serde_json::json!(description);
+    controller["poses"] = serde_json::json!(poses.iter().map(|p| serde_json::json!({
+        "pose_id": p.pose_id,
+        "priority": p.priority,
+        "input_type": p.input_type,
+        "input": p.input,
+    })).collect::<Vec<_>>());
+
+    let serialized = serde_json::to_string_pretty(&controllers)
+        .map_err(|e| format!("Failed to serialize controllers: {}", e))?;
+    std::fs::write(&controllers_file, serialized)
+        .map_err(|e| format!("Failed to write controllers.json: {}", e))?;
+
+    Ok(())
+}
+
+// ── Input firing ──
+
+#[derive(Clone)]
+enum InputItem {
+    Key(Key),
+    MouseButton(Button),
+}
+
+fn parse_input_item(s: &str) -> Option<InputItem> {
+    match s {
+        "Left Click"   => Some(InputItem::MouseButton(Button::Left)),
+        "Right Click"  => Some(InputItem::MouseButton(Button::Right)),
+        "Middle Click" => Some(InputItem::MouseButton(Button::Middle)),
+        "Space"        => Some(InputItem::Key(Key::Space)),
+        "Ctrl"         => Some(InputItem::Key(Key::Control)),
+        "Alt"          => Some(InputItem::Key(Key::Alt)),
+        "Shift"        => Some(InputItem::Key(Key::Shift)),
+        "Win"          => Some(InputItem::Key(Key::Meta)),
+        "Enter"        => Some(InputItem::Key(Key::Return)),
+        "Backspace"    => Some(InputItem::Key(Key::Backspace)),
+        "Delete"       => Some(InputItem::Key(Key::Delete)),
+        "Esc"          => Some(InputItem::Key(Key::Escape)),
+        "Tab"          => Some(InputItem::Key(Key::Tab)),
+        "CapsLock"     => Some(InputItem::Key(Key::CapsLock)),
+        "↑"            => Some(InputItem::Key(Key::UpArrow)),
+        "↓"            => Some(InputItem::Key(Key::DownArrow)),
+        "←"            => Some(InputItem::Key(Key::LeftArrow)),
+        "→"            => Some(InputItem::Key(Key::RightArrow)),
+        "Home"         => Some(InputItem::Key(Key::Home)),
+        "End"          => Some(InputItem::Key(Key::End)),
+        "PgUp"         => Some(InputItem::Key(Key::PageUp)),
+        "PgDn"         => Some(InputItem::Key(Key::PageDown)),
+        "Insert"       => Some(InputItem::Key(Key::Insert)),
+        "F1"  => Some(InputItem::Key(Key::F1)),
+        "F2"  => Some(InputItem::Key(Key::F2)),
+        "F3"  => Some(InputItem::Key(Key::F3)),
+        "F4"  => Some(InputItem::Key(Key::F4)),
+        "F5"  => Some(InputItem::Key(Key::F5)),
+        "F6"  => Some(InputItem::Key(Key::F6)),
+        "F7"  => Some(InputItem::Key(Key::F7)),
+        "F8"  => Some(InputItem::Key(Key::F8)),
+        "F9"  => Some(InputItem::Key(Key::F9)),
+        "F10" => Some(InputItem::Key(Key::F10)),
+        "F11" => Some(InputItem::Key(Key::F11)),
+        "F12" => Some(InputItem::Key(Key::F12)),
+        s if s.chars().count() == 1 => {
+            Some(InputItem::Key(Key::Unicode(s.chars().next().unwrap())))
+        }
+        _ => None,
+    }
+}
+
+struct EnigoState(Mutex<Option<Enigo>>);
+
+/// Hold all inputs down (for Press type).
+#[tauri::command]
+fn fire_press(inputs: Vec<String>, enigo_state: tauri::State<EnigoState>) -> Result<(), String> {
+    let mut guard = enigo_state.0.lock().map_err(|e| format!("lock error: {}", e))?;
+    let enigo = guard.as_mut().ok_or("enigo not initialized")?;
+    for s in &inputs {
+        if let Some(item) = parse_input_item(s) {
+            match item {
+                InputItem::Key(k)         => { let _ = enigo.key(k, Direction::Press); }
+                InputItem::MouseButton(b) => { let _ = enigo.button(b, Direction::Press); }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Release all inputs in reverse order (for Press type on pose drop).
+#[tauri::command]
+fn fire_release(inputs: Vec<String>, enigo_state: tauri::State<EnigoState>) -> Result<(), String> {
+    let mut guard = enigo_state.0.lock().map_err(|e| format!("lock error: {}", e))?;
+    let enigo = guard.as_mut().ok_or("enigo not initialized")?;
+    for s in inputs.iter().rev() {
+        if let Some(item) = parse_input_item(s) {
+            match item {
+                InputItem::Key(k)         => { let _ = enigo.key(k, Direction::Release); }
+                InputItem::MouseButton(b) => { let _ = enigo.button(b, Direction::Release); }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Press all inputs in order then release in reverse (for Tap and Crazy Tap).
+#[tauri::command]
+fn fire_tap(inputs: Vec<String>, enigo_state: tauri::State<EnigoState>) -> Result<(), String> {
+    let mut guard = enigo_state.0.lock().map_err(|e| format!("lock error: {}", e))?;
+    let enigo = guard.as_mut().ok_or("enigo not initialized")?;
+    let items: Vec<InputItem> = inputs.iter().filter_map(|s| parse_input_item(s)).collect();
+    for item in &items {
+        match item {
+            InputItem::Key(k)         => { let _ = enigo.key(*k, Direction::Press); }
+            InputItem::MouseButton(b) => { let _ = enigo.button(*b, Direction::Press); }
+        }
+    }
+    for item in items.iter().rev() {
+        match item {
+            InputItem::Key(k)         => { let _ = enigo.key(*k, Direction::Release); }
+            InputItem::MouseButton(b) => { let _ = enigo.button(*b, Direction::Release); }
+        }
+    }
+    Ok(())
+}
+
 #[tauri::command]
 fn select_webcam(index: u32) -> Result<String, String> {
     let output = Command::new(python_path())
@@ -723,8 +1131,11 @@ pub fn run() {
     #[cfg(target_os = "linux")]
     std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
 
+    let enigo_instance = Enigo::new(&Settings::default()).ok();
+
     tauri::Builder::default()
         .manage(CameraState(Mutex::new(None)))
+        .manage(EnigoState(Mutex::new(enigo_instance)))
         .plugin(tauri_plugin_opener::init())
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::Destroyed = event {
@@ -743,6 +1154,11 @@ pub fn run() {
             let poses_file = app_data_dir.join("poses.json");
             if !poses_file.exists() {
                 std::fs::write(&poses_file, "[]")?;
+            }
+
+            let controllers_file = app_data_dir.join("controllers.json");
+            if !controllers_file.exists() {
+                std::fs::write(&controllers_file, "[]")?;
             }
 
             // Ensure images/ dir exists and every existing pose has a subdirectory
@@ -775,7 +1191,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![list_webcams, select_webcam, load_poses, create_pose, delete_pose, load_pose, save_pose, save_pose_image, load_pose_images, set_image_active, delete_pose_image, start_camera_stream, stop_camera_stream, load_pose_for_testing])
+        .invoke_handler(tauri::generate_handler![list_webcams, select_webcam, load_poses, create_pose, delete_pose, load_pose, save_pose, save_pose_image, load_pose_images, set_image_active, delete_pose_image, start_camera_stream, stop_camera_stream, load_pose_for_testing, load_poses_for_testing, load_controllers, set_controller_hotkey, create_controller, delete_controller, load_controller, save_controller, fire_press, fire_release, fire_tap])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
