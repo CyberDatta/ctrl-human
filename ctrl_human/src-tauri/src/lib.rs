@@ -20,6 +20,15 @@ fn kill_camera(child: &mut Child, pgid: u32) {
     let _ = child.wait();
 }
 
+#[cfg(not(unix))]
+fn kill_camera(child: &mut Child, _pgid: u32) {
+    // taskkill /F /T kills the process and all its children (handles PyInstaller's grandchild)
+    let _ = Command::new("taskkill")
+        .args(["/F", "/T", "/PID", &child.id().to_string()])
+        .output();
+    let _ = child.wait();
+}
+
 impl Drop for CameraState {
     fn drop(&mut self) {
         if let Ok(mut guard) = self.0.lock() {
