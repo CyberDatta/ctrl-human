@@ -4,16 +4,27 @@ use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use tauri::Manager;
+#[cfg(unix)]
+use std::os::unix::process::CommandExt;
 
 // ── Camera MJPEG server state ──
-struct CameraState(Mutex<Option<Child>>);
+// Stores (child_handle, pgid). The camera_server is a --onefile PyInstaller binary whose
+// bootloader forks a Python grandchild — child.kill() only kills the bootloader, leaving
+// the Python process (and the webcam lock) alive. We put the process in its own group
+// (process_group(0)) so killpg terminates the whole tree at once.
+struct CameraState(Mutex<Option<(Child, u32)>>);
+
+#[cfg(unix)]
+fn kill_camera(child: &mut Child, pgid: u32) {
+    unsafe { libc::killpg(pgid as libc::pid_t, libc::SIGKILL); }
+    let _ = child.wait();
+}
 
 impl Drop for CameraState {
     fn drop(&mut self) {
         if let Ok(mut guard) = self.0.lock() {
-            if let Some(mut child) = guard.take() {
-                let _ = child.kill();
-                let _ = child.wait(); // reap the zombie so the OS releases the device
+            if let Some((mut child, pgid)) = guard.take() {
+                kill_camera(&mut child, pgid);
             }
         }
     }
@@ -71,14 +82,17 @@ fn start_camera_stream(
     let mut guard = state.0.lock().unwrap();
 
     // Stop any existing camera server
-    if let Some(mut child) = guard.take() {
-        let _ = child.kill();
+    if let Some((mut child, pgid)) = guard.take() {
+        kill_camera(&mut child, pgid);
     }
 
     let mut cmd = Command::new(get_sidecar_path("camera_server"));
     cmd.arg(camera_index.to_string())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit());
+
+    #[cfg(unix)]
+    cmd.process_group(0); // new process group so killpg reaches PyInstaller's Python grandchild
 
     if with_inference {
         cmd.arg("--model").arg(get_model_path(&app, "pose_landmarker_lite.task"));
@@ -87,6 +101,8 @@ fn start_camera_stream(
     let mut child = cmd
         .spawn()
         .map_err(|e| format!("Failed to start camera server: {}", e))?;
+
+    let pgid = child.id();
 
     // The script prints the bound port on its first stdout line
     let stdout = child.stdout.take().ok_or("No stdout from camera server")?;
@@ -101,16 +117,15 @@ fn start_camera_stream(
         .parse()
         .map_err(|e| format!("Invalid port '{}': {}", line.trim(), e))?;
 
-    *guard = Some(child);
+    *guard = Some((child, pgid));
     Ok(port)
 }
 
 #[tauri::command]
 fn stop_camera_stream(state: tauri::State<CameraState>) {
     let mut guard = state.0.lock().unwrap();
-    if let Some(mut child) = guard.take() {
-        let _ = child.kill();
-        let _ = child.wait();
+    if let Some((mut child, pgid)) = guard.take() {
+        kill_camera(&mut child, pgid);
     }
 }
 
@@ -1116,9 +1131,8 @@ pub fn run() {
             if let tauri::WindowEvent::Destroyed = event {
                 let state = window.app_handle().state::<CameraState>();
                 let mut guard = state.0.lock().unwrap();
-                if let Some(mut child) = guard.take() {
-                    let _ = child.kill();
-                    let _ = child.wait();
+                if let Some((mut child, pgid)) = guard.take() {
+                    kill_camera(&mut child, pgid);
                 }
             }
         })
