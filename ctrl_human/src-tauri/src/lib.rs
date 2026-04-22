@@ -19,70 +19,51 @@ impl Drop for CameraState {
     }
 }
 
-fn python_path() -> PathBuf {
-    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    manifest_dir
-        .join("..")
-        .join("src-python")
-        .join("pygmy")
-        .join("bin")
-        .join("python")
+// In dev builds, sidecars are shell wrappers in src-tauri/binaries/ that proxy to pygmy Python.
+// In release builds, Tauri places the real PyInstaller binaries next to the main executable.
+fn get_sidecar_path(name: &str) -> PathBuf {
+    #[cfg(debug_assertions)]
+    {
+        let target = env!("TAURI_ENV_TARGET_TRIPLE");
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("binaries")
+            .join(format!("{}-{}", name, target))
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        std::env::current_exe()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join(name)
+    }
 }
 
-fn bridge_path() -> PathBuf {
-    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    manifest_dir
-        .join("..")
-        .join("src-python")
-        .join("bridge.py")
+// In dev builds, models are read directly from src-python/models/.
+// In release builds, Tauri copies them into the bundle's resource dir.
+fn get_model_path(app: &tauri::AppHandle, name: &str) -> PathBuf {
+    #[cfg(debug_assertions)]
+    {
+        let _ = app;
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("src-python")
+            .join("models")
+            .join(name)
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        app.path().resource_dir().unwrap().join("models").join(name)
+    }
 }
 
-fn camera_server_path() -> PathBuf {
-    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    manifest_dir
-        .join("..")
-        .join("src-python")
-        .join("camera_server.py")
-}
-
-fn extract_pose_path() -> PathBuf {
-    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    manifest_dir
-        .join("..")
-        .join("src-python")
-        .join("extract_pose.py")
-}
-
-fn pose_model_path() -> PathBuf {
-    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    manifest_dir
-        .join("..")
-        .join("src-python")
-        .join("models")
-        .join("pose_landmarker_full.task")
-}
-
-fn pose_model_lite_path() -> PathBuf {
-    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    manifest_dir
-        .join("..")
-        .join("src-python")
-        .join("models")
-        .join("pose_landmarker_lite.task")
-}
-
-fn default_pose_values() -> Vec<serde_json::Value> {
-    (0..33).map(|_| serde_json::json!({ "x": 0.0, "y": 0.0 })).collect()
-}
-
-fn python_ld_library_path() -> String {
-    let existing = std::env::var("LD_LIBRARY_PATH").unwrap_or_default();
-    let sys = "/usr/lib/x86_64-linux-gnu:/usr/lib";
-    if existing.is_empty() { sys.to_string() } else { format!("{}:{}", sys, existing) }
-}
+// fn default_pose_values() -> Vec<serde_json::Value> {
+//     (0..33).map(|_| serde_json::json!({ "x": 0.0, "y": 0.0 })).collect()
+// }
 
 #[tauri::command]
 fn start_camera_stream(
+    app: tauri::AppHandle,
     state: tauri::State<CameraState>,
     camera_index: u32,
     with_inference: bool,
@@ -94,15 +75,13 @@ fn start_camera_stream(
         let _ = child.kill();
     }
 
-    let mut cmd = Command::new(python_path());
-    cmd.arg(camera_server_path())
-        .arg(camera_index.to_string())
-        .env("LD_LIBRARY_PATH", python_ld_library_path())
+    let mut cmd = Command::new(get_sidecar_path("camera_server"));
+    cmd.arg(camera_index.to_string())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit());
 
     if with_inference {
-        cmd.arg("--model").arg(pose_model_lite_path());
+        cmd.arg("--model").arg(get_model_path(&app, "pose_landmarker_lite.task"));
     }
 
     let mut child = cmd
@@ -148,11 +127,10 @@ struct ListWebcamsResponse {
 
 #[tauri::command]
 fn list_webcams() -> Result<Vec<Webcam>, String> {
-    let output = Command::new(python_path())
-        .arg(bridge_path())
+    let output = Command::new(get_sidecar_path("bridge"))
         .arg("list_webcams")
         .output()
-        .map_err(|e| format!("Failed to spawn Python: {}", e))?;
+        .map_err(|e| format!("Failed to spawn bridge: {}", e))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -572,11 +550,9 @@ fn save_pose_image(
 
     // Run MediaPipe pose extraction on the saved image
     let pose_values: Vec<serde_json::Value> = {
-        let output = Command::new(python_path())
-            .arg(extract_pose_path())
+        let output = Command::new(get_sidecar_path("extract_pose"))
             .arg(&image_path)
-            .arg(pose_model_path())
-            .env("LD_LIBRARY_PATH", python_ld_library_path())
+            .arg(get_model_path(&app, "pose_landmarker_full.task"))
             .stderr(Stdio::inherit())
             .output();
         match output {
@@ -1107,12 +1083,11 @@ fn fire_tap(inputs: Vec<String>, enigo_state: tauri::State<EnigoState>) -> Resul
 
 #[tauri::command]
 fn select_webcam(index: u32) -> Result<String, String> {
-    let output = Command::new(python_path())
-        .arg(bridge_path())
+    let output = Command::new(get_sidecar_path("bridge"))
         .arg("select_webcam")
         .arg(index.to_string())
         .output()
-        .map_err(|e| format!("Failed to spawn Python: {}", e))?;
+        .map_err(|e| format!("Failed to spawn bridge: {}", e))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);

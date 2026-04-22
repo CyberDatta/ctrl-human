@@ -1,1 +1,2 @@
-opencv-python-headless
+mediapipe==0.10.33
+opencv-contrib-python==4.13.0.92
