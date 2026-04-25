@@ -220,7 +220,7 @@
   }
 
   .hero-img {
-    height: 32vh;
+    height: 28vh;
     border-radius: 0;
     object-fit: contain;
     padding-bottom: 2vh;
