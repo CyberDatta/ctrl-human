@@ -1187,6 +1187,16 @@ pub fn run() {
                 })?;
             }
 
+            // WebView2 on Windows auto-applies DPI zoom (e.g. 1.5× at 150% display scale).
+            // set_zoom is a multiplier on top of DPI scaling, so 1/scale_factor cancels it out,
+            // making the CSS viewport match logical window dimensions at any display scale.
+            #[cfg(target_os = "windows")]
+            {
+                let win = app.get_webview_window("main").expect("no main window");
+                let scale = win.scale_factor().unwrap_or(1.0);
+                win.set_zoom(1.0 / scale)?;
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![list_webcams, select_webcam, load_poses, create_pose, delete_pose, load_pose, save_pose, save_pose_image, load_pose_images, set_image_active, delete_pose_image, start_camera_stream, stop_camera_stream, load_pose_for_testing, load_poses_for_testing, load_controllers, set_controller_hotkey, create_controller, delete_controller, load_controller, save_controller, fire_press, fire_release, fire_tap])
