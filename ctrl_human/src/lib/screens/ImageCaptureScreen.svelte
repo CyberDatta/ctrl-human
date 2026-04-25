@@ -210,14 +210,14 @@
     overflow-y: auto;
     background-color: var(--color-primary-3);
     font-family: var(--font-primary);
-    padding: 2.5rem 3rem 0 3rem;
+    padding: 3vh 3.5vw 0 3.5vw;
     box-sizing: border-box;
   }
 
   /* ── Nav ── */
   .top-bar {
     flex-shrink: 0;
-    margin-bottom: 4rem;
+    margin-bottom: 5vh;
   }
 
   .back-btn {
@@ -231,7 +231,7 @@
   }
 
   .back-arrow {
-    height: 4rem;
+    height: 5vh;
     transform: rotate(90deg);
     flex-shrink: 0;
   }
@@ -254,14 +254,14 @@
   /* ── Main area ── */
   .main-area {
     display: flex;
-    gap: 2rem;
+    gap: 2vw;
     align-items: center;
     justify-content: center;
   }
 
   /* ── Camera preview ── */
   .video-preview {
-    width: 56.25rem;
+    width: 48vw;
     background-color: var(--color-background);
     border: var(--stroke-width-s) solid var(--color-dark-1);
     box-shadow: var(--shadow-m);
@@ -311,8 +311,7 @@
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
-    width: 19rem;
+    gap: 1.5vh;
   }
 
   .action-btn {
@@ -329,7 +328,7 @@
     color: var(--color-dark-1);
     padding: 0.85rem 1.5rem;
     transition: background-color 0.1s, color 0.1s;
-    width: 26.9375rem;
+    width: 22vw;
   }
 
   .action-btn:hover:not(:disabled) {
@@ -358,10 +357,10 @@
     flex-shrink: 0;
     display: flex;
     flex-direction: row;
-    gap: 1.25rem;
+    gap: 1.5vw;
     overflow-x: auto;
-    padding: 1.5rem 3rem;
-    margin: 4rem -3rem 0;
+    padding: 2vh 3.5vw;
+    margin: 4vh -3.5vw 0;
     scrollbar-width: thin;
     scrollbar-color: var(--color-dark-1) transparent;
   }
@@ -374,8 +373,8 @@
 
   .capture-card {
     flex-shrink: 0;
-    width: 22.3125rem;
-    height: 13.5rem;
+    width: 19vw;
+    height: 20vh;
     background-color: var(--color-background);
     border: var(--stroke-width-s) solid var(--color-dark-1);
     box-shadow: var(--shadow-m);

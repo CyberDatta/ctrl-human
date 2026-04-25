@@ -468,14 +468,14 @@
     flex: 1;
     min-width: 0;
     overflow-y: auto;
-    padding: 3rem 3.5rem 4rem 3.5rem;
+    padding: 3vh 3.5vw 4vh 3.5vw;
     display: flex;
     flex-direction: column;
   }
 
   /* ── Nav ── */
   .top-bar {
-    padding-bottom: 2.5rem;
+    padding-bottom: 3vh;
   }
 
   .back-btn {
@@ -489,7 +489,7 @@
   }
 
   .back-arrow {
-    height: 4rem;
+    height: 5vh;
     transform: rotate(90deg);
     flex-shrink: 0;
   }
@@ -511,7 +511,7 @@
 
   /* ── Title ── */
   .title-row {
-    margin-bottom: 1.5rem;
+    margin-bottom: 2vh;
   }
 
   .title-wrap {
@@ -540,7 +540,7 @@
     outline: none;
     padding: 0.25rem 0.75rem;
     flex: 1;
-    max-width: 40rem;
+    max-width: 60%;
   }
 
   /* ── Description ── */
@@ -548,8 +548,8 @@
     display: flex;
     align-items: flex-start;
     gap: 1.25rem;
-    margin-bottom: 2.5rem;
-    max-width: 45rem;
+    margin-bottom: 3vh;
+    max-width: 70%;
   }
 
   .pose-desc {
@@ -572,7 +572,7 @@
     outline: none;
     padding: 0.5rem 0.75rem;
     resize: vertical;
-    min-height: 6rem;
+    min-height: 10vh;
     flex: 1;
     width: 100%;
   }
@@ -610,15 +610,15 @@
   /* ── Editor area: skeleton + controls ── */
   .editor-area {
     display: flex;
-    gap: 2.5rem;
+    gap: 2.5vw;
     align-items: flex-start;
     flex: 1;
   }
 
   /* ── Skeleton viewport ── */
   .skeleton-viewport {
-    width: 36.9375rem;
-    height: 34.25rem;
+    width: 31vw;
+    height: 54vh;
     background-color: var(--color-tertiary-1);
     border: var(--stroke-width-s) solid var(--color-dark-1);
     box-shadow: var(--shadow-m);
@@ -644,7 +644,7 @@
   .controls-col {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: 1.5vh;
     flex: 1;
     min-width: 0;
   }
@@ -662,7 +662,7 @@
     font-weight: var(--font-weight-H5);
     font-size: var(--font-size-H5);
     color: var(--color-dark-1);
-    padding: 0.85rem 1.5rem;
+    padding: 0.85rem 1.35rem;
     transition: background-color 0.1s, color 0.1s;
   }
 
@@ -680,23 +680,23 @@
   /* Upload row */
   .upload-row {
     display: flex;
-    gap: 1.25rem;
+    gap: 1.5vw;
   }
 
   .upload-btn {
     background-color: var(--color-primary-2);
-    width: 17.0625rem;
+    flex: 1;
   }
 
   .camera-btn {
     background-color: var(--color-secondary-1);
-    width: 21.3125rem;
+    flex: 1.3;
   }
 
   /* Detection row */
   .detection-row {
     display: flex;
-    gap: 1.25rem;
+    gap: 1.5vw;
     align-items: flex-start;
   }
 
@@ -705,7 +705,7 @@
     border: var(--stroke-width-s) solid var(--color-dark-1);
     box-shadow: var(--shadow-m);
     padding: 1.25rem 1.5rem;
-    width: 27.375rem;
+    flex: 1;
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -759,7 +759,7 @@
 
   .slider-wrap {
     position: relative;
-    height: 2.75rem;
+    height: 5vh;
   }
 
   .slider-track {
@@ -808,6 +808,8 @@
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+    width: 8vw;
+    flex-shrink: 0;
   }
 
   /* Test Pose button */
@@ -816,7 +818,7 @@
     flex-direction: column;
     padding: 1.25rem 1.5rem;
     align-self: stretch;
-    min-width: 8rem;
+    min-width: 0;
     box-shadow: var(--shadow-m);
     gap: 0.5rem;
   }
@@ -836,18 +838,16 @@
   /* Export Pose */
   .export-btn {
     background-color: var(--color-tertiary-2);
-    width: 11.9375rem;
   }
 
   /* Delete Pose */
   .delete-btn {
     background-color: var(--color-window);
-    width: 11.9375rem;
   }
 
   /* ── Right sidebar ── */
   .sidebar {
-    width: 32.5rem;
+    width: 28vw;
     min-width: 0;
     flex-shrink: 0;
     height: 100vh;
@@ -859,7 +859,7 @@
 
   .sidebar-header {
     background-color: var(--color-secondary-4);
-    padding: 2rem 2rem 1.75rem 2rem;
+    padding: 2vh 2vw 1.75vh 2vw;
     border-bottom: var(--stroke-width-s) solid var(--color-dark-1);
     flex-shrink: 0;
   }
@@ -869,7 +869,7 @@
     font-size: var(--font-size-H3);
     line-height: var(--line-height-H3);
     color: var(--color-dark-1);
-    margin: 0 0 0.75rem 0;
+    margin: 0 0 1vh 0;
   }
 
   .sidebar-subtitle {
@@ -883,10 +883,10 @@
     flex: 1;
     overflow-y: auto;
     background-color: var(--color-primary-3);
-    padding: 1.5rem;
+    padding: 2vh 2vw;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 2vh;
   }
 
   /* ── Reference image cards ── */
@@ -897,11 +897,12 @@
     position: relative;
     overflow: hidden;
     flex-shrink: 0;
-    height: 16rem;
+    height: 26vh;
   }
 
   .ref-image {
     width: 100%;
+    height: 100%;
     display: block;
     min-width: 0;
     min-height: 0;

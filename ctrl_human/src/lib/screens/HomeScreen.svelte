@@ -102,7 +102,7 @@
     <div class="box box-left">
       <img src={sittingImg} alt="Sitting in front of PC" class="hero-img" />
       <h2 class="box-heading">Controller Studio</h2>
-      <p class="box-text">Create custom control schemes by mapping your body movements to keyboard inputs</p>
+      <p class="box-text">Create custom controllers by mapping your body movements to keyboard inputs</p>
       <button class="cta" on:click={() => goto('/controller-studio')}>Get Creative</button>
     </div>
     <div class="box box-right">
@@ -165,14 +165,12 @@
  .home {
   width: 100%;
   height: 100vh;
-  padding: 0rem;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   background-color: var(--color-secondary-2);
-
-  /* Push content down so it starts below the absolutely-positioned title */
-  padding-top: 14rem;
+  padding-top: 20vh;
+  padding-bottom: 5vh;
   position: relative;
 }
 
@@ -185,26 +183,25 @@
   color: var(--color-dark-1);
   margin: 0;
   position: absolute;
-  left: 6.0625rem;
-  top: 5.125rem;
+  left: 6.5vw;
+  top: 8.5vh;
 }
 
   .row {
     display: flex;
     justify-content: space-between;
-    margin-top: 1.5rem;
-    padding: 0 5rem;
+    margin-top: 1.5vh;
+    padding: 0 5.5vw;
     flex: 1;
   }
 
   .box {
-    width: 52rem;
-    height: 49.3125rem;
-    border-radius: 0rem;
-    padding-top: 4.1875rem;
+    width: 48%;
+    border-radius: 0;
+    padding-top: 5vh;
     box-sizing: border-box;
-    padding-left: 4rem;
-    padding-right: 4rem;
+    padding-left: 7%;
+    padding-right: 7%;
     border: var(--stroke-width-s) solid var(--color-dark-1);
     box-shadow: var(--shadow-l);
   }
@@ -223,10 +220,10 @@
   }
 
   .hero-img {
-    height: 21.4375rem;
-    border-radius: 0rem;
+    height: 32vh;
+    border-radius: 0;
     object-fit: contain;
-    padding-bottom: 2.5rem;
+    padding-bottom: 2vh;
   }
 
   .box-heading {
@@ -235,10 +232,10 @@
     font-size: var(--font-size-H1);
     line-height: var(--line-height-H1);
     color: var(--color-dark-1);
-    margin: 1rem 0 0 0;
-    padding-bottom: 1rem;
-  }  
-  
+    margin: 1vh 0 0 0;
+    padding-bottom: 1vh;
+  }
+
   .box-heading-2 {
     color: var(--color-white);
   }
@@ -249,19 +246,19 @@
     font-size: var(--font-size-H4);
     line-height: var(--line-height-H4);
     color: var(--color-dark-1);
-    margin: 0.5rem 0 0 0;
-    padding-bottom: 2rem;
+    margin: 0.5vh 0 0 0;
+    padding-bottom: 2.5vh;
   }
 
-    .box-text-2 {
+  .box-text-2 {
     color: var(--color-white);
-    }
+  }
 
   .cta {
-    margin-top: 1rem;
+    margin-top: 1vh;
     background-color: var(--color-primary-2);
     border: var(--stroke-width-s) solid var(--color-dark-1);
-    border-radius: 0rem;
+    border-radius: 0;
     padding: 0.75rem 1.5rem;
     cursor: pointer;
     font-family: var(--font-primary);
@@ -285,9 +282,9 @@
   /* Dropdowns — float above the box content */
   .dropdowns {
     position: absolute;
-    top: 3.875rem;
-    left: 4rem;
-    right: 4rem;
+    top: 5vh;
+    left: 7%;
+    right: 7%;
     display: flex;
     gap: 1rem;
     z-index: 10;
@@ -304,7 +301,7 @@
     padding: 1.125rem 1rem;
     background-color: var(--color-primary-3);
     border: var(--stroke-width-s) solid var(--color-dark-1);
-    border-radius: 0rem;
+    border-radius: 0;
     cursor: pointer;
     font-family: var(--font-primary);
     font-weight: var(--font-weight-H3);
@@ -393,25 +390,25 @@
   }
 
   .error-modal {
-    width: 27.9375rem;
-    height: 26.25rem;
+    width: 31vw;
+    height: 47vh;
     background-color: var(--color-secondary-4);
     border: var(--stroke-width-s) solid var(--color-dark-1);
     box-shadow: var(--shadow-l);
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding-top: 2.5625rem;
-    padding-bottom: 3.1875rem;
-    padding-left: 2rem;
-    padding-right: 2rem;
+    padding-top: 4.5vh;
+    padding-bottom: 5.5vh;
+    padding-left: 2vw;
+    padding-right: 2vw;
     box-sizing: border-box;
   }
 
   .error-icon {
     width: 5rem;
     height: 5rem;
-    padding-bottom: 2rem;
+    padding-bottom: 2vh;
   }
 
   .error-title {
@@ -420,7 +417,7 @@
     font-size: var(--font-size-H2);
     line-height: var(--line-height-H2);
     color: var(--color-dark-1);
-    margin: 0 0 0 0;
+    margin: 0;
   }
 
   .error-text {
@@ -429,22 +426,18 @@
     font-size: var(--font-size-H4);
     line-height: var(--line-height-H4);
     color: var(--color-dark-1);
-    margin: 1rem 0 2rem 0;
+    margin: 1vh 0 2vh 0;
     text-align: left;
   }
 
   .error-btn {
-    /* margin-top: 2rem; */
     background-color: var(--color-secondary-2);
     border: var(--stroke-width-s) solid var(--color-dark-1);
-    border-radius: 0rem;
-
+    border-radius: 0;
     padding-top: 0.875rem;
     padding-bottom: 0.875rem;
-
-    padding-left: 8.125rem;
-    padding-right: 8.125rem;
-
+    padding-left: 7vw;
+    padding-right: 7vw;
     cursor: pointer;
     font-family: var(--font-primary);
     font-weight: var(--font-weight-H3);

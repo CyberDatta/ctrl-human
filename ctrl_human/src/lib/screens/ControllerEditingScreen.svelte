@@ -394,14 +394,14 @@ function openKeyCapture(rowId: number) {
     min-width: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 3rem 3.5rem 4rem 3.5rem;
+    padding: 3vh 3.5vw 4vh 3.5vw;
     display: flex;
     flex-direction: column;
   }
 
   /* ── Nav ── */
   .top-bar {
-    padding-bottom: 2.5rem;
+    padding-bottom: 3vh;
   }
 
   .back-btn {
@@ -415,7 +415,7 @@ function openKeyCapture(rowId: number) {
   }
 
   .back-arrow {
-    height: 4rem;
+    height: 5vh;
     transform: rotate(90deg);
     flex-shrink: 0;
   }
@@ -437,7 +437,7 @@ function openKeyCapture(rowId: number) {
 
   /* ── Title ── */
   .title-row {
-    margin-bottom: 1.5rem;
+    margin-bottom: 2vh;
   }
 
   .title-wrap {
@@ -465,7 +465,7 @@ function openKeyCapture(rowId: number) {
     border: var(--stroke-width-s) solid var(--color-dark-1);
     outline: none;
     padding: 0.25rem 0.75rem;
-    max-width: 40rem;
+    max-width: 60%;
   }
 
   /* ── Description ── */
@@ -473,8 +473,8 @@ function openKeyCapture(rowId: number) {
     display: flex;
     align-items: flex-start;
     gap: 1.25rem;
-    margin-bottom: 2.5rem;
-    max-width: 45rem;
+    margin-bottom: 3vh;
+    max-width: 70%;
   }
 
   .scheme-desc {
@@ -497,7 +497,7 @@ function openKeyCapture(rowId: number) {
     outline: none;
     padding: 0.5rem 0.75rem;
     resize: vertical;
-    min-height: 6rem;
+    min-height: 10vh;
     flex: 1;
     width: 100%;
   }
@@ -534,8 +534,8 @@ function openKeyCapture(rowId: number) {
   /* ── Action buttons row ── */
   .action-row {
     display: flex;
-    gap: 1.25rem;
-    margin-bottom: 2.5rem;
+    gap: 1.5vw;
+    margin-bottom: 3vh;
     align-items: center;
   }
 
@@ -572,14 +572,15 @@ function openKeyCapture(rowId: number) {
 
   /* ── Detection Method card ── */
   .detection-card {
-    width: 60.375rem;
+    width: 100%;
     background-color: var(--color-secondary-2);
     border: var(--stroke-width-s) solid var(--color-dark-1);
     box-shadow: var(--shadow-l);
-    padding: 2rem 2.5rem 2.5rem 2.5rem;
+    padding: 2vh 2.5vw;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1.5vh;
+    box-sizing: border-box;
   }
 
   .detection-heading {
@@ -593,7 +594,7 @@ function openKeyCapture(rowId: number) {
   .pose-rows {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 1vh;
   }
 
   /* ── Pose row ── */
@@ -619,11 +620,11 @@ function openKeyCapture(rowId: number) {
   .pose-row-controls {
     display: flex;
     align-items: center;
-    gap: 2rem;
+    gap: 1.5vw;
   }
 
   .pose-row-controls .input-btn {
-    margin-right: 2rem;
+    margin-right: 1.5vw;
   }
 
   /* ── Dropdown ── */
@@ -764,7 +765,7 @@ function openKeyCapture(rowId: number) {
 
   /* ── Right sidebar ── */
   .sidebar {
-    width: 33.125rem;
+    width: 28vw;
     flex-shrink: 0;
     height: 100vh;
     display: flex;
@@ -774,7 +775,7 @@ function openKeyCapture(rowId: number) {
 
   .sidebar-header {
     background-color: var(--color-secondary-4);
-    padding: 2rem 2rem 1.75rem 2rem;
+    padding: 2vh 2vw 1.75vh 2vw;
     border-bottom: var(--stroke-width-s) solid var(--color-dark-1);
     flex-shrink: 0;
   }
@@ -784,7 +785,7 @@ function openKeyCapture(rowId: number) {
     font-size: var(--font-size-H2);
     line-height: var(--line-height-H2);
     color: var(--color-dark-1);
-    margin: 0 0 0.75rem 0;
+    margin: 0 0 1vh 0;
   }
 
   .sidebar-subtitle {
@@ -798,10 +799,10 @@ function openKeyCapture(rowId: number) {
     flex: 1;
     overflow-y: auto;
     background-color: var(--color-primary-3);
-    padding: 1.5rem;
+    padding: 2vh 2vw;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 2vh;
   }
 
   /* ── Sidebar pose cards ── */
@@ -809,7 +810,7 @@ function openKeyCapture(rowId: number) {
     background-color: var(--color-background);
     border: var(--stroke-width-s) solid var(--color-dark-1);
     box-shadow: var(--shadow-m);
-    padding: 1.5rem 1.5rem;
+    padding: 1.5vh 1.5vw;
     cursor: pointer;
     font-family: var(--font-primary);
     font-weight: var(--font-weight-H3);
@@ -840,12 +841,12 @@ function openKeyCapture(rowId: number) {
     background-color: var(--color-primary-4);
     border: var(--stroke-width-s) solid var(--color-dark-1);
     box-shadow: var(--shadow-l);
-    padding: 3rem 3rem 2.5rem 3rem;
-    width: 36rem;
+    padding: 3vh 3vw 2.5vh 3vw;
+    width: 30vw;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2rem;
+    gap: 2.5vh;
   }
 
   .kc-close {

@@ -371,14 +371,14 @@
     overflow: hidden;
     background-color: var(--color-primary-3);
     font-family: var(--font-primary);
-    padding: 2.5rem 3rem 0 3rem;
+    padding: 3vh 3.5vw 0 3.5vw;
     box-sizing: border-box;
   }
 
   /* ── Nav ── */
   .top-bar {
     flex-shrink: 0;
-    margin-bottom: 3rem;
+    margin-bottom: 4vh;
   }
 
   .back-btn {
@@ -392,7 +392,7 @@
   }
 
   .back-arrow {
-    height: 4rem;
+    height: 5vh;
     transform: rotate(90deg);
     flex-shrink: 0;
   }
@@ -423,7 +423,7 @@
 
   /* ── Video ── */
   .video-preview {
-    width: 56.25rem;
+    width: 48vw;
     flex-shrink: 0;
     background-color: var(--color-background);
     border: var(--stroke-width-s) solid var(--color-dark-1);
@@ -456,7 +456,7 @@
   /* ── Switch Camera button — positioned to the right of the video ── */
   .action-col {
     position: absolute;
-    left: calc(50% + 56.25rem / 2 + 2rem);
+    left: calc(50% + 24vw + 2vw);
     top: 50%;
     transform: translateY(-50%);
   }
@@ -495,13 +495,13 @@
   /* ── Pose strip ── */
   .pose-strip-wrapper {
     flex-shrink: 0;
-    padding: 2rem 0 2rem 0;
+    padding: 2.5vh 0;
     overflow: hidden;
   }
 
   .pose-strip {
     display: flex;
-    gap: 1.25rem;
+    gap: 1.5vw;
     overflow-x: auto;
     padding-bottom: 0.5rem;
     scrollbar-width: none;
@@ -516,7 +516,7 @@
     background-color: var(--color-secondary-2);
     border: var(--stroke-width-s) solid var(--color-dark-1);
     box-shadow: var(--shadow-m);
-    padding: 1.25rem 2.5rem;
+    padding: 1.5vh 2.5vw;
     font-weight: var(--font-weight-H3);
     font-size: var(--font-size-H3);
     line-height: var(--line-height-H3);
