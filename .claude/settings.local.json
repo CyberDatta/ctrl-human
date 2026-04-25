@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"C:\\\\Users\\\\Pratham\\\\Desktop\\\\toadthatcodes\\\\ctrl-human\\\\ctrl_human\\\\src-python\\\\pygmy\\\\Scripts\\\\pip.exe\" list *)"
+    ]
+  }
+}

@@ -10,6 +10,7 @@ import sys
 import threading
 import json
 import os
+import platform
 import argparse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -42,10 +43,14 @@ _latest_landmarks: list | None = None  # [{x, y} × 33] or None when no pose
 
 def capture_loop():
     global _latest_frame, _latest_bgr, _frame_gen
-    cap = cv2.VideoCapture(camera_index, cv2.CAP_V4L2)
-    # Prefer MJPEG natively from the camera — avoids slow YUYV→BGR conversion
-    # that causes colour artifacts on cameras that default to YUYV.
-    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+    if platform.system() == "Windows":
+        # DirectShow is the reliable Windows backend; V4L2 is Linux-only
+        cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
+    else:
+        cap = cv2.VideoCapture(camera_index, cv2.CAP_V4L2)
+        # Prefer MJPEG natively from the camera — avoids slow YUYV→BGR conversion
+        # that causes colour artifacts on cameras that default to YUYV.
+        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
