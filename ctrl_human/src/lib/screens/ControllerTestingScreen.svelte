@@ -34,6 +34,8 @@
   // ── Input firing state ──
   const crazyTapIntervals = new Map<number, ReturnType<typeof setInterval>>();
   const CRAZY_TAP_INTERVAL_MS = 100;
+  const pressRepeatIntervals = new Map<number, ReturnType<typeof setInterval>>();
+  const PRESS_REPEAT_INTERVAL_MS = 50; // mimic keyboard auto-repeat so games see continuous KEYDOWN
 
   // ── Detection helpers (same as PoseTestingScreen) ──
   function cosineSimilarity(live: PosePoint[], ref: PosePoint[], mask: boolean[]): number {
@@ -99,6 +101,10 @@
         // In-transition
         if (cp.input_type === 'Press') {
           invoke('fire_press', { inputs: cp.inputs }).catch(() => {});
+          const interval = setInterval(() => {
+            invoke('fire_press', { inputs: cp.inputs }).catch(() => {});
+          }, PRESS_REPEAT_INTERVAL_MS);
+          pressRepeatIntervals.set(cp.idx, interval);
         } else if (cp.input_type === 'Tap') {
           invoke('fire_tap', { inputs: cp.inputs }).catch(() => {});
         } else if (cp.input_type === 'Crazy Tap') {
@@ -111,6 +117,11 @@
       } else if (wasSelected && !isSelected) {
         // Out-transition
         if (cp.input_type === 'Press') {
+          const interval = pressRepeatIntervals.get(cp.idx);
+          if (interval !== undefined) {
+            clearInterval(interval);
+            pressRepeatIntervals.delete(cp.idx);
+          }
           invoke('fire_release', { inputs: cp.inputs }).catch(() => {});
         } else if (cp.input_type === 'Crazy Tap') {
           const interval = crazyTapIntervals.get(cp.idx);
@@ -305,12 +316,15 @@
   onDestroy(async () => {
     pollRunning = false;
     if (isMainController) {
-      // Release any held Press inputs
+      // Release any held Press inputs and clear their repeat intervals
       for (const cp of controllerPoses) {
         if (prevSelectedIdxs.has(cp.idx) && cp.input_type === 'Press') {
+          const interval = pressRepeatIntervals.get(cp.idx);
+          if (interval !== undefined) clearInterval(interval);
           invoke('fire_release', { inputs: cp.inputs }).catch(() => {});
         }
       }
+      pressRepeatIntervals.clear();
       // Clear all crazy tap intervals
       for (const interval of crazyTapIntervals.values()) {
         clearInterval(interval);
