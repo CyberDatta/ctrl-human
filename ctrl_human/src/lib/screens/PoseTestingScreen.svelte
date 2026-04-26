@@ -313,14 +313,14 @@
     overflow-y: auto;
     background-color: var(--color-primary-3);
     font-family: var(--font-primary);
-    padding: 2.5rem 3rem 0 3rem;
+    padding: 3vh 3.5vw 0 3.5vw;
     box-sizing: border-box;
   }
 
   /* ── Nav ── */
   .top-bar {
     flex-shrink: 0;
-    margin-bottom: 4rem;
+    margin-bottom: 5vh;
   }
 
   .back-btn {
@@ -334,7 +334,7 @@
   }
 
   .back-arrow {
-    height: 4rem;
+    height: 5vh;
     transform: rotate(90deg);
     flex-shrink: 0;
   }
@@ -364,7 +364,7 @@
 
   /* ── Camera preview ── */
   .video-preview {
-    width: 56.25rem;
+    width: 48vw;
     background-color: var(--color-background);
     border: var(--stroke-width-s) solid var(--color-dark-1);
     box-shadow: var(--shadow-m);
@@ -397,12 +397,12 @@
   /* ── Action column — sits to the right of the centered video ── */
   .action-col {
     position: absolute;
-    left: calc(50% + 56.25rem / 2 + 2rem);
+    left: calc(50% + 24vw + 2vw);
     top: 50%;
     transform: translateY(-50%);
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: 1.5vh;
   }
 
   .action-btn {
@@ -418,7 +418,7 @@
     font-size: var(--font-size-H4);
     color: var(--color-dark-1);
     padding: 0.85rem 1.5rem;
-    width: 26.9375rem;
+    width: 22vw;
   }
 
   .action-btn:disabled {
@@ -439,7 +439,7 @@
   .status-row {
     display: flex;
     justify-content: center;
-    margin-top: 3rem;
+    margin-top: 4vh;
   }
 
   .status-badge {
@@ -447,7 +447,7 @@
     font-weight: var(--font-weight-H3);
     font-size: var(--font-size-H3);
     color: var(--color-dark-1);
-    padding: 0.75rem 3rem;
+    padding: 0.75rem 3vw;
     border: var(--stroke-width-s) solid var(--color-dark-1);
     box-shadow: var(--shadow-m);
     transition: background-color 0.2s;

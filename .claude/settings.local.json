@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(\"C:\\\\Users\\\\Pratham\\\\Desktop\\\\toadthatcodes\\\\ctrl-human\\\\ctrl_human\\\\src-python\\\\pygmy\\\\Scripts\\\\pip.exe\" list *)"
+      "Bash(\"C:\\\\Users\\\\Pratham\\\\Desktop\\\\toadthatcodes\\\\ctrl-human\\\\ctrl_human\\\\src-python\\\\pygmy\\\\Scripts\\\\pip.exe\" list *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('app',{}\\).get\\('windows',[]\\), indent=2\\)\\)\")",
+      "Bash(cp \"/c/Users/Pratham/Desktop/fonts/Public_Sans/PublicSans-VariableFont_wght.ttf\" \"C:\\\\Users\\\\Pratham\\\\Desktop\\\\toadthatcodes\\\\ctrl-human\\\\ctrl_human\\\\static\\\\fonts/\")",
+      "Bash(cp \"/c/Users/Pratham/Desktop/fonts/Public_Sans/PublicSans-Italic-VariableFont_wght.ttf\" \"C:\\\\Users\\\\Pratham\\\\Desktop\\\\toadthatcodes\\\\ctrl-human\\\\ctrl_human\\\\static\\\\fonts/\")"
     ]
   }
 }

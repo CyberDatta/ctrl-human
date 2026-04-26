@@ -108,12 +108,12 @@
     background-color: var(--color-primary-1);
     box-sizing: border-box;
     overflow-y: auto;
-    padding: 4rem 4rem 4rem 4rem;
+    padding: 4vh 3.5vw;
   }
 
   /* ── Nav ── */
   .top-bar {
-    padding: 0rem 0 4rem 0;
+    padding: 0 0 4vh 0;
   }
 
   .back-btn {
@@ -127,7 +127,7 @@
   }
 
   .back-arrow {
-    height: 4.6875rem;
+    height: 7vh;
     transform: rotate(90deg);
   }
 
@@ -155,15 +155,15 @@
     line-height: var(--line-height-Huge);
     font-style: var(--font-style-Huge);
     color: var(--color-dark-1);
-    margin: 0rem 0rem 2rem 0rem;
+    margin: 0 0 2vh 0;
   }
 
   /* ── Toolbar ── */
   .toolbar {
     display: flex;
     align-items: center;
-    gap: 0rem;
-    margin-bottom: 2.5rem;
+    gap: 0;
+    margin-bottom: 3vh;
   }
 
   .search-bar {
@@ -172,7 +172,7 @@
     gap: 0.75rem;
     background-color: var(--color-secondary-4);
     padding: 1rem 2rem;
-    flex: 0 1 32rem;
+    flex: 0 1 33vw;
     box-shadow: var(--shadow-m);
     border: var(--stroke-width-s) solid var(--color-dark-1);
   }
@@ -254,12 +254,13 @@
   .poses-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 2rem;
+    gap: 2vw;
   }
 
   .pose-card {
-    width: 20rem;
-    height: 20rem;
+    width: 17vw;
+    height: 28vh;
+    box-sizing: border-box;
     border: var(--stroke-width-s) solid var(--color-dark-1);
     background-color: var(--color-background);
     box-shadow: var(--shadow-m);
@@ -288,7 +289,7 @@
 
   .pose-card-image {
     flex: 1;
-    min-height: 11rem;
+    min-height: 20vh;
     position: relative;
     overflow: hidden;
   }

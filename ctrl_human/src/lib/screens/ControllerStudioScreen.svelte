@@ -100,7 +100,7 @@
 
   /* ── Nav ── */
   .top-bar {
-    padding: 4rem 4rem;
+    padding: 4vh 3.5vw;
   }
 
   .back-btn {
@@ -114,7 +114,7 @@
   }
 
   .back-arrow {
-    height: 4.6875rem;
+    height: 7vh;
     transform: rotate(90deg);
   }
 
@@ -138,17 +138,17 @@
   .cards-area {
     position: relative;
     flex: 1;
-    margin: 0 4rem;
+    margin: 0 3.5vw;
   }
 
   /* ── Shared card styles ── */
   .card {
     border: var(--stroke-width-s) solid var(--color-dark-1);
     box-shadow: var(--shadow-l);
-    padding-top: 4rem;
-    padding-bottom: 4rem;
-    padding-left: 2rem;
-    padding-right: 2rem;
+    padding-top: 5vh;
+    padding-bottom: 5vh;
+    padding-left: 3vw;
+    padding-right: 3vw;
     box-sizing: border-box;
   }
 
@@ -158,7 +158,7 @@
     font-size: var(--font-size-H1);
     line-height: var(--line-height-H1);
     color: var(--color-dark-1);
-    margin: 0 0 3rem 0;
+    margin: 0 0 3vh 0;
   }
 
   .card-heading-light {
@@ -171,7 +171,7 @@
     font-size: var(--font-size-H4);
     line-height: var(--line-height-H4);
     color: var(--color-dark-1);
-    margin: 0 0 3rem 0;
+    margin: 0 0 3vh 0;
   }
 
   .card-text-light {
@@ -201,7 +201,7 @@
     position: absolute;
     top: 0;
     left: 0;
-    width: 37.5rem;
+    width: 50%;
     background-color: var(--color-primary-2);
   }
 
@@ -212,9 +212,9 @@
   /* ── Webcam frame ── */
   .webcam-frame {
     position: absolute;
-    top: -7.865rem;
-    left: 41.475rem;
-    width: 22.0625rem;
+    top: -12vh;
+    left: 56%;
+    width: 28%;
     border: var(--stroke-width-s) solid var(--color-dark-1);
     background-color: var(--color-dark-1);
   }
@@ -307,9 +307,9 @@
   /* ── Controller Builder card ── */
   .builder-card {
     position: absolute;
-    top: 18.18rem;
-    left: 41.4375rem;
-    width: 37.5rem;
+    top: 30%;
+    left: 56%;
+    right: 0;
     background-color: var(--color-window);
   }
 
@@ -320,7 +320,7 @@
   /* ── Studio title ── */
   .studio-title {
     position: absolute;
-    bottom: 3.88125rem;
+    bottom: 7%;
     left: 0;
     font-family: var(--font-primary);
     font-weight: var(--font-weight-Huge);
@@ -334,7 +334,7 @@
 
   /* ── Sidebar ── */
   .sidebar {
-    width: 33.0625rem;
+    width: 28.5vw;
     display: flex;
     flex-direction: column;
     height: 100vh;
@@ -343,7 +343,7 @@
 
   .sidebar-header {
     background-color: var(--color-secondary-4);
-    padding: 2rem 2rem;
+    padding: 2.5vh 2vw;
     border-left: var(--stroke-width-s) solid var(--color-dark-1);
     border-bottom: var(--stroke-width-s) solid var(--color-dark-1);
   }
@@ -354,7 +354,7 @@
     font-size: var(--font-size-H2);
     line-height: var(--line-height-H2);
     color: var(--color-dark-1);
-    margin: 0 0 1rem 0;
+    margin: 0 0 1.5vh 0;
   }
 
   .sidebar-desc {
@@ -370,10 +370,10 @@
     background-color: var(--color-primary-3);
     flex: 1;
     overflow-y: auto;
-    padding: 1.5rem;
+    padding: 2vh 2vw;
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: 2.5vh;
     border-left: var(--stroke-width-s) solid var(--color-dark-1);
   }
 
@@ -381,7 +381,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 2rem 2rem;
+    padding: 2vh 2vw;
     background-color: var(--color-white);
     border: var(--stroke-width-s) solid var(--color-dark-1);
     box-shadow: var(--shadow-m);
